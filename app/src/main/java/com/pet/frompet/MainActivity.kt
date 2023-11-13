@@ -58,7 +58,6 @@ class MainActivity : AppCompatActivity() {
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        homeFilterViewModel.getCurrentUserLocation()
 
         binding.myBottomNav.itemIconTintList = null
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
