@@ -12,6 +12,7 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.firebase.auth.FirebaseAuth
@@ -21,6 +22,7 @@ import com.pet.frompet.data.model.CommentData
 import com.pet.frompet.data.model.CommunityData
 import com.pet.frompet.data.model.ReCommentData
 import com.pet.frompet.databinding.ActivityReCommentBinding
+import com.pet.frompet.ui.commnunity.community.CommunityViewModel
 import com.pet.frompet.util.showToast
 
 class ReCommentActivity : AppCompatActivity() {
@@ -29,6 +31,7 @@ class ReCommentActivity : AppCompatActivity() {
     private lateinit var adapter: CommentAdapter
     private val store = FirebaseFirestore.getInstance()
     private var communityData: CommunityData? = null
+    private val viewModel: CommunityViewModel by viewModels()
 
     private fun hideKeyboard() {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager
@@ -81,15 +84,24 @@ class ReCommentActivity : AppCompatActivity() {
 
 
         binding.imageButton.setOnClickListener {
-            val reCommentText = binding.editTextText.text.toString()
-            receivedCommentData?.let {
-                if (reCommentText.isNotEmpty()) {
-                    addReComment(it, reCommentText)
-                } else {
-                    showToast("대댓글 내용을 입력하세요", Toast.LENGTH_SHORT)
-                }
+            receivedCommentData?.let { commentData ->
+                val reCommentText = binding.editTextText.text.toString()
+                viewModel.addReComment(commentData, reCommentText)
             } ?: showToast("댓글 데이터를 불러오지 못했습니다", Toast.LENGTH_SHORT)
+
+            viewModel.reCommentAdded.observe(this) { isAdded ->
+                if (isAdded) {
+                    hideKeyboard()
+                    binding.editTextText.text.clear()
+                    receivedCommentData?.let {
+                        adapter.reloadReComments(it)
+                    }
+                } else {
+                    showToast("대댓글 추가에 실패했습니다", Toast.LENGTH_SHORT)
+                }
+            }
         }
+
         binding.backBtn.setOnClickListener {
             finish()
         }

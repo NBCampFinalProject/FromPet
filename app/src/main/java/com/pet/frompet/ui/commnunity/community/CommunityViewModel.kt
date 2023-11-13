@@ -13,6 +13,8 @@ import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.pet.frompet.data.model.CommentData
+import com.pet.frompet.data.model.ReCommentData
 
 class CommunityViewModel(
 ) : ViewModel() {
@@ -37,6 +39,9 @@ class CommunityViewModel(
     private val _event: SingleLiveEvent<CategoryClick> = SingleLiveEvent()
     val event: LiveData<CategoryClick> get() = _event
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val store = FirebaseFirestore.getInstance()
+    private val _reCommentAdded = MutableLiveData<Boolean>()
+    val reCommentAdded: LiveData<Boolean> = _reCommentAdded
 
 
     fun getCommunityData(petType: String): LiveData<List<CommunityData>> {
@@ -80,6 +85,42 @@ class CommunityViewModel(
             .addOnCompleteListener { task ->
                 _deleteResult.value = task.isSuccessful
             }
+    }
+    fun addReComment(receivedCommentData: CommentData, reCommentText: String) {
+        val reCommentId = store.collection("Community")
+            .document(receivedCommentData.postDocumentId)
+            .collection("Comment")
+            .document(receivedCommentData.commentId)
+            .collection("ReComment")
+            .document().id
+
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+
+        if (uid != null) {
+            val reCommentData = ReCommentData(
+                reCommentId,
+                receivedCommentData.commentId,
+                reCommentText,
+                uid,
+                System.currentTimeMillis()
+            )
+
+            store.collection("Community")
+                .document(receivedCommentData.postDocumentId)
+                .collection("Comment")
+                .document(receivedCommentData.commentId)
+                .collection("ReComment")
+                .document(reCommentId)
+                .set(reCommentData)
+                .addOnSuccessListener {
+                    _reCommentAdded.value = true
+                }
+                .addOnFailureListener {
+                    _reCommentAdded.value = false
+                }
+        } else {
+            _reCommentAdded.value = false
+        }
     }
 
 }
