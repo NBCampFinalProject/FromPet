@@ -48,8 +48,11 @@ class PasswordResetActivity : AppCompatActivity() {
             }
         }
 
-    }
 
+    }
+    override fun onBackPressed() {
+        finish()
+    }
     override fun onDestroy() {
         super.onDestroy()
         _binding = null

@@ -137,12 +137,14 @@ class LoginActivity : AppCompatActivity() {
                     .addOnSuccessListener { documentSnapshot ->
                         if (documentSnapshot.exists()) {
                             // 사용자 정보가 Firestore에 있는 경우, MainActivity로 이동
-                            val intent = Intent(this@LoginActivity, com.pet.frompet.MainActivity::class.java)
-                            startActivity(intent)
+                            val i = Intent(this@LoginActivity, MainActivity::class.java)
+                            i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            startActivity(i)
                         } else {
                             // 사용자 정보가 Firestore에 없는 경우, MemberInfoActivity로 이동
-                            val intent = Intent(this@LoginActivity, MemberInfoActivity::class.java)
-                            startActivity(intent)
+                            val i = Intent(this@LoginActivity, MemberInfoActivity::class.java)
+                            i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            startActivity(i)
                         }
                     }
                     .addOnFailureListener {

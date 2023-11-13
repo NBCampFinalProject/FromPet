@@ -50,6 +50,7 @@ import com.pet.frompet.databinding.FragmentMapBinding
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import ted.gun0912.clustering.naver.TedNaverClustering
+import java.lang.NumberFormatException
 
 class NaverMapFragment : Fragment(), OnMapReadyCallback {
 
@@ -58,7 +59,7 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
     private lateinit var locationSource: FusedLocationSource
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    private  var naverMap: NaverMap? = null
+    private var naverMap: NaverMap? = null
     private val firestore = FirebaseFirestore.getInstance()
     private val database = Firebase.database
     private val locationRef = database.getReference("location")
@@ -100,23 +101,6 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
         } else {
             initMapView()
         }
-
-        observeViewModel()
-
-    }
-
-    private fun observeViewModel() {
-        viewModel.userLocation.observe(viewLifecycleOwner) {
-            it?.let { userLocationInfo ->
-                val userUid = userLocationInfo.userUid
-                val userLocation = userLocationInfo.userLocations
-
-                if (userUid.isNotEmpty() && userLocation.isNotEmpty()) {
-                    for (i in userUid.indices)
-                        setMark(userUid[i], userLocation[i])
-                }
-            }
-        }
     }
 
     private fun initMapView() {
@@ -130,14 +114,34 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
         // fragment의 getMapAsync() 메서드로 OnMapReadyCallBack 콜백을 등록하면, 비동기로 NaverMap 객체를 얻을 수 있음
         mapFragment.getMapAsync(this)
         locationSource = FusedLocationSource(this, LOCATION_PERMISSION_REQUEST_CODE)
+
+        observeViewModel()
+
+    }
+
+    private fun observeViewModel() {
+
+        viewModel.userLocation.observe(viewLifecycleOwner) {
+            it?.let { userLocationInfo ->
+                val userUid = userLocationInfo.userUid
+                val userLocation = userLocationInfo.userLocations
+
+                if (userUid.isNotEmpty() && userLocation.isNotEmpty()) {
+                    for (i in userUid.indices) setMark(userUid[i], userLocation[i])
+                }
+            }
+        }
     }
 
     // hasPermission()에서는 위치 권한 있 -> true , 없 -> false
     private fun hasPermission(): Boolean {
         for (permission in PERMISSIONS) {
-            if (activity?.let { ContextCompat.checkSelfPermission(it, permission) }
-                != PackageManager.PERMISSION_GRANTED
-            ) {
+            if (activity?.let {
+                    ContextCompat.checkSelfPermission(
+                        it,
+                        permission
+                    )
+                } != PackageManager.PERMISSION_GRANTED) {
                 return false
             }
         }
@@ -155,11 +159,9 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
         fusedLocationClient =
             LocationServices.getFusedLocationProviderClient(requireContext()) // 초기화
         if (ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_FINE_LOCATION
+                requireContext(), Manifest.permission.ACCESS_FINE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.ACCESS_COARSE_LOCATION
+                requireContext(), Manifest.permission.ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             return
@@ -167,44 +169,34 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
 
         fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
             if (location != null) {
+
+                Log.d("뷰모델", "Latitude: ${location.latitude}, Longitude: ${location.longitude}")
                 // 사용자 현재 위치 파베에 업로드
-                val userLocation = UserLocation(location.latitude, location.longitude) // 사용자 위도 경도
-                location.let {//null있어서 let필요 x
-                    locationRef.child(currentUserId).setValue(userLocation) //viewmodel로 1 --
+//                val userLocation = UserLocation(location.latitude, location.longitude)
+//                locationRef.child(currentUserId).setValue(userLocation) //viewmodel로 1 --
+                viewModel.currentLocationUpload(location.latitude, location.longitude)
 
-                    val cameraUpdate =
-                        CameraUpdate.scrollTo(LatLng(location.latitude, location.longitude))
-                            .animate(CameraAnimation.Easing, 2000)
-                            .reason(CameraUpdate.REASON_GESTURE)
-                    naverMap.moveCamera(cameraUpdate)
+                val cameraUpdate =
+                    CameraUpdate.scrollTo(LatLng(location.latitude, location.longitude))
+                        .animate(CameraAnimation.Easing, 2000).reason(CameraUpdate.REASON_GESTURE)
+                naverMap.moveCamera(cameraUpdate)
 
-                    naverMap.addOnCameraIdleListener {
-                        resetMarker() // 마커리셋
-
-                        viewModel.getloadLocationData(naverMap.contentBounds)
-
-                    }
+                naverMap.addOnCameraIdleListener {
+                    resetMarker()
+                    viewModel.getloadLocationData(naverMap.contentBounds)
                 }
             }
         }
-        locationRef.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                for (snapshots in snapshot.children) {
-                    Log.d("sooj", "$snapshot")
-                    val location = snapshots.getValue(UserLocation::class.java)
-                    val userUid = snapshots.key // 사용자 uid
 
-                    // 다른 사용자 위치 마커 표시
-                    if (location != null && userUid != null && userUid != currentUserId) {
-                        setMark(userUid, location) // 사용자 uid 셋마크로 넘겨주고
-                        Log.d("sooj", "$location")
+        viewModel.otherUserLocation.observe(viewLifecycleOwner, Observer { userLocations ->
+            for (userLocationInfo in userLocations) {
+                for (userUid in userLocationInfo.userUid) {
+                    for (location in userLocationInfo.userLocations) {
+                        setMark(userUid, location)
                     }
                 }
             }
-
-            override fun onCancelled(error: DatabaseError) {}
         })
-
     }
 
 
@@ -237,11 +229,12 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
 
 
     private fun setMark(userUid: String, location: UserLocation) = lifecycleScope.launch {
-        if (!isAdded) return@launch //프래그먼트에서 액티비티가 연결되어 있는지 확인 만약 연결되어 있지 않다면 빠르게 종료해서requireContext호출을 방지
+        if (!isAdded) return@launch //프래그먼트에서 액티비티가 연결되어 있는지 확인 만약 연결되어 있지 않다면 빠르게 종료해서 requireContext호출을 방지
         if (userUid != currentUserId) {
             val marker = createMarker(location, userUid)
             setUserProfileImage(userUid, marker)
             addMarker(marker)
+            Log.d("LoadLocationData", "마커 저장 띵 ${markers.size}")
         }
     }
 
@@ -274,12 +267,14 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
     /** 마커 클릭 시, 프로필 띄우기 **/
     private fun markerClick(userUid: String) {
         lifecycleScope.launch {
-            val userDocument = firestore.collection("User").document(userUid).get() //비즈니스로직 db에 접근
+            val userDocument = firestore.collection("User").document(userUid).get()
                 .await() //컬렉셕에 사용자 uid로 접근하고 비동기로 동작 데이터 가져올때까지 기달
             val user = userDocument.toObject(User::class.java) //위에서 얻은 문서들을 user클래스의 인스턴스로 변환
+
             val intent = Intent(context, MapUserDetailActivity::class.java)
             intent.putExtra(MapUserDetailActivity.USER, user)
             startActivity(intent)
+
         }
     }
 
@@ -292,12 +287,9 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
 
         if (profileUrl != null) {
             val imageLoader = context?.let { Coil.imageLoader(it) }
-            val request = ImageRequest.Builder(requireActivity())
-                .data(profileUrl)
-                .size(800, 800)
+            val request = ImageRequest.Builder(requireActivity()).data(profileUrl).size(800, 800)
                 .transformations(
-                    CircleCropTransformation(),
-                    MapMakerBorder(requireContext(), 15f)
+                    CircleCropTransformation(), MapMakerBorder(requireContext(), 15f)
                 ) //이미지동그랗게
                 .target {
                     val bitmap = (it as BitmapDrawable).bitmap

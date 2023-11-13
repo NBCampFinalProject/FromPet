@@ -30,19 +30,16 @@ class SignOutActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         _binding = ActivitySignOutBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setSignOut()
 
-
+    }
+    private fun setSignOut(){
         binding.btOut.setOnClickListener {
             viewModel.deleteAccount()
             checkLoginState()
         }
-
-
-
-
-
-
     }
+
     private fun checkLoginState() {
         val intent = if (isLoggedIn()) {
             Intent(this, IntroActivity::class.java)
@@ -52,24 +49,15 @@ class SignOutActivity : AppCompatActivity() {
 
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
 
-        // 앱을 재시작하기 위한 PendingIntent 생성
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent, PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        // AlarmManager 서비스를 가져와서 재시작 예약
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        alarmManager.set(
-            AlarmManager.RTC,
-            System.currentTimeMillis() + 100, // 필요한 경우 지연 시간을 조절할 수 있습니다
-            pendingIntent
-        )
-
+        startActivity(Intent(this, LoadingActivity::class.java))
         // 현재 액티비티를 종료하여 앱 재시작을 시뮬레이션
         finish()
     }
     private fun isLoggedIn(): Boolean {
         return FirebaseAuth.getInstance().currentUser != null
     }
-
+    override fun onDestroy() {
+        super.onDestroy()
+        _binding = null
+    }
 }

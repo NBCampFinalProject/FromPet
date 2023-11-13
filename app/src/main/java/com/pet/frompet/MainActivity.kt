@@ -16,7 +16,10 @@ import com.google.firebase.auth.FirebaseAuth
 import android.Manifest
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatDelegate
+import com.pet.frompet.ui.home.HomeFilterViewModel
+import com.pet.frompet.ui.home.HomeFilterViewModelFactory
 import com.pet.frompet.util.showToast
 
 class MainActivity : AppCompatActivity() {
@@ -27,6 +30,7 @@ class MainActivity : AppCompatActivity() {
 
     private val fcmTokenManager = FCMTokenManager()
     private val binding get() = _binding!!
+   private val homeFilterViewModel: HomeFilterViewModel by viewModels { HomeFilterViewModelFactory(application) }
 
     private val locationPermissions = arrayOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
@@ -36,14 +40,17 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             val granted = permissions.entries.all { it.value }
             if (granted) {
-
-                showToast( "위치 권한이 승인되었습니다.", Toast.LENGTH_SHORT)
-                // 위치 기능을 초기화하거나 위치 기반 서비스 시작
+                showToast("위치 권한이 승인되었습니다.\n필터기능을 위해서 앱을 재실행 해주세요.", Toast.LENGTH_SHORT)
+                homeFilterViewModel.getCurrentUserLocation()
+                homeFilterViewModel.currentFilter?.let {
+                    homeFilterViewModel.filterUsers(it)
+                }
             } else {
-                // 사용자가 권한을 거부했을 때의 처리
-                showToast( "위치 권한이 필요합니다.", Toast.LENGTH_LONG)
+                showToast("위치 권한이 필요합니다.", Toast.LENGTH_LONG)
             }
         }
+
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,11 +58,10 @@ class MainActivity : AppCompatActivity() {
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        homeFilterViewModel.getCurrentUserLocation()
 
         binding.myBottomNav.itemIconTintList = null
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-
-
 
 
         // Android 13 PostNotification 처리
@@ -102,16 +108,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
     private fun checkLocationPermission() {
-        // 모든 위치 권한이 이미 승인되었는지 확인
         val allPermissionsGranted = locationPermissions.all {
             ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }
         if (!allPermissionsGranted) {
-            // 하나라도 거부된 권한이 있다면 모든 위치 권한을 요청
             requestLocationPermissionLauncher.launch(locationPermissions)
         }
     }
+
+
     override fun onDestroy() {
         _binding = null
         super.onDestroy()

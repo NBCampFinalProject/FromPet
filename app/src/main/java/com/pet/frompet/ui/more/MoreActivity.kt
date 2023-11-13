@@ -38,8 +38,9 @@ class MoreActivity : AppCompatActivity() {
             startActivity(intent)
         }
         binding.btMoreAuth.setOnClickListener {
-            val intent = Intent(this, SignOutActivity::class.java)
-            startActivity(intent)
+            val i = Intent(this@MoreActivity, SignOutActivity::class.java)
+            i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(i)
         }
 
 
@@ -88,10 +89,6 @@ class MoreActivity : AppCompatActivity() {
 
             val database = FirebaseDatabase.getInstance().getReference()
             database.child("usersToken").child(userId).child("fcmToken").setValue(null)
-//            // FCM 토큰을 삭제하는 코드 추가 해야함
-
-
-            // 사용자 로그아웃
             FirebaseAuth.getInstance().signOut()
 
             // LoginActivity로 이동이야
@@ -102,5 +99,8 @@ class MoreActivity : AppCompatActivity() {
     }
 
 
-
+    override fun onDestroy() {
+        super.onDestroy()
+        _binding = null
+    }
 }

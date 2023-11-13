@@ -24,6 +24,9 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.pet.frompet.util.showToast
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationRequest
 
 class HomeFilterViewModel(private val app :Application): ViewModel() {
     private val _filteredUsers = MutableLiveData<List<User>>()
@@ -39,7 +42,7 @@ class HomeFilterViewModel(private val app :Application): ViewModel() {
     private val swipedUsersRef = database.getReference("swipedUsers").child(currentUser)
     private val filteredUsersRef = database.getReference("filteredUsers").child(currentUser)
     private val usersLocationRef = database.getReference("locations")
-    private var currentFilter: Filter? = null
+    var currentFilter: Filter? = null
     private var lastFilter: Filter? = null
     private var fusedLocationClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(app)
@@ -50,22 +53,16 @@ class HomeFilterViewModel(private val app :Application): ViewModel() {
     init {
         getCurrentUserLocation()
     }
-    private fun getCurrentUserLocation() {
+    fun getCurrentUserLocation() {
         try {
             val task: Task<Location> = fusedLocationClient.lastLocation
             task.addOnSuccessListener { location: Location? ->
                 if (location != null) {
-                    // 사용자의 위치 정보를 생성
                     val userLocation = UserLocation(location.latitude, location.longitude)
-
-                    // firestore에 사용자 위치 정보 업데이트
                     updateUserLocationFirestore(currentUser, userLocation)
                     currentUserLocation = location
-                    Log.d("Filter", "Current user location: $currentUserLocation")
                     currentFilter?.let { filter ->
-                        filterUsers(filter) // 이 함수는 _filteredUsers를 업데이트합니다!
-                    } ?: run {
-                        Log.d("Filter", "No filter ")
+                        filterUsers(filter)
                     }
                 }
             }.addOnFailureListener {
@@ -75,6 +72,7 @@ class HomeFilterViewModel(private val app :Application): ViewModel() {
             app.showToast("위치권한이 없습니다.", Toast.LENGTH_SHORT)
         }
     }
+
 
     fun filterUsers(filter: Filter) {
         lastFilter = filter
