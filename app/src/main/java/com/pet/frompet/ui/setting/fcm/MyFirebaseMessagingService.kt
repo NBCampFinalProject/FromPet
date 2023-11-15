@@ -15,6 +15,7 @@ import com.pet.frompet.ui.chat.fragment.ChatHomeFragment
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.pet.frompet.MainActivity
 
 //알림메시지를 처리하는 클래스
 class MyFirebaseMessagingService : FirebaseMessagingService() {
@@ -45,6 +46,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             fcmTokenManager.fetchAndBaseFCMToken(it.uid)  // 새로운 FCM 토큰을 가져와서 저장 앱 삭제나 했을경우에
         }
     }
+    private fun getPendingIntent(context : Context): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("navigation", "chatHomeFragment")
+        }
+
+        val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+        return PendingIntent.getActivity(context, 0, intent, pendingIntentFlags)
+    }
+
 
     private fun showNotification(title: String, message: String) {
         val channelId = "FromPetNotificationChannel"
@@ -61,22 +76,16 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             }
             notificationManager.createNotificationChannel(channel)
         }
-//        val intent = Intent(this,ChatHomeActivity::class.java)
-//        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-//        val pendingIntent = PendingIntent.getActivity(
-//            this,
-//            0,
-//            intent,
-//            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
-//        )
 
+        val pendingIntent =getPendingIntent(this)
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.drawable.splash)            //아이콘
+
+            .setSmallIcon(R.drawable.yetda)            //아이콘
             .setContentTitle(title)           //알림데이터모델에 제목
             .setContentText(message)         //알림데이터모델에 메시지
             .setPriority(NotificationCompat.PRIORITY_HIGH)        //중요도
             .setAutoCancel(true)         //클릭했을때 자동사라짐
-//            .setContentIntent(pendingIntent)
+            .setContentIntent(pendingIntent)
 
         val notificationId = System.currentTimeMillis().toInt() //알림 Id 생성 현재시간으로 사용해서 각 알림에 고유한 id생성,알림 동시에 오더라도 각각별도로 표시
         notificationManager.notify(notificationId, notificationBuilder.build()) //알람을 표시 알람id식별하고 builder를 사용하여 알림내용 구성

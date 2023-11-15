@@ -83,6 +83,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        intent?.let {
+            if (it.getStringExtra("navigation") == "chatHomeFragment"){
+                navigateChatHomeFragment()
+            }
+        }
+    }
+
+    private fun navigateChatHomeFragment() {
+        val navHost = supportFragmentManager.findFragmentById(R.id.my_nav_host) as NavHostFragment
+        val navController = navHost.navController
+        navController.navigate(R.id.chat_fra)
+    }
+
     private fun setStartApp() {
         val navHostFragment = supportFragmentManager.findFragmentById(com.pet.frompet.R.id.my_nav_host) as NavHostFragment
         val navController = navHostFragment.navController
