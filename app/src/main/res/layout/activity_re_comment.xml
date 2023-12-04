@@ -103,7 +103,7 @@
             android:hint="답글을 입력해주세요."
             android:inputType="text"
             android:maxLength="95"
-            android:maxLines="5"
+            android:maxLines="3"
             android:padding="11dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/imageButton"

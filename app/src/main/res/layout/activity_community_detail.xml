@@ -206,6 +206,7 @@
             android:hint="@string/enter_a_comment"
             android:maxLines="3"
             android:padding="10dp"
+            android:maxLength="150"
             android:paddingStart="15dp"
             android:visibility="visible"
             app:layout_constraintBottom_toBottomOf="parent"

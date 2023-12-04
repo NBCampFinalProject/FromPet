@@ -79,8 +79,7 @@ class CommentAdapter(
                     textView11.text = if (likeCount > 0) likeCount.toString() else ""
                     textView11.setTextColor(Color.parseColor("#000000"))
                     textView9.setTextColor(Color.parseColor("#000000"))
-                    ivThumbsUp.setImageResource(R.drawable.icon_unsel_thumb)
-                }
+                    ivThumbsUp.setImageResource(R.drawable.icon_unsel_thumb)                }
 
                 if (authorUid.isNotEmpty()) {
                     val userRef = FirebaseFirestore.getInstance().collection("User").document(authorUid)
@@ -155,7 +154,6 @@ class CommentAdapter(
 
                 val reCommentCount = reComments?.size ?: 0
                 textView.text = if (reCommentCount > 0) "답글$reCommentCount" else "답글쓰기"
-
                 reCommentAdapter.submitList(reComments)
             }
     }

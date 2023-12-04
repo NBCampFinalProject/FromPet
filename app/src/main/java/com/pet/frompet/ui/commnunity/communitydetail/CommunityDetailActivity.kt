@@ -622,7 +622,4 @@ class CommunityDetailActivity : AppCompatActivity() {
             runOnUiThread { showToast("좋아요 실패했습니다", Toast.LENGTH_SHORT) }
         }
     }
-
-
-
 }
