@@ -11,7 +11,7 @@ import com.pet.frompet.R
 import com.pet.frompet.data.model.CommunityHomeData
 
 
-class MemberInfoAdapter(private val context: Context, private val data: List<CommunityHomeData>
+class MemberInfoAdapter(private val context: Context, private var data: List<CommunityHomeData>
 ):BaseAdapter() {
     override fun getCount(): Int {
         return data.size
@@ -39,5 +39,10 @@ class MemberInfoAdapter(private val context: Context, private val data: List<Com
 
     override fun getDropDownView(position: Int, convertView: View?, parent: ViewGroup?): View {
         return super.getDropDownView(position, convertView, parent)
+    }
+
+    fun updateData(newData: List<CommunityHomeData>){
+        data = newData
+        notifyDataSetChanged()
     }
 }
