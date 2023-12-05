@@ -4,8 +4,12 @@ import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
 import android.view.ViewTreeObserver
+import android.widget.AdapterView
 import android.widget.Toast
+import androidx.core.content.ContentProviderCompat.requireContext
+import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
 import com.pet.frompet.databinding.ActivityMemberInfoBinding
 import com.pet.frompet.data.model.User
@@ -25,7 +29,14 @@ import java.util.Locale
 class MemberInfoActivity : AppCompatActivity() {
     private var _binding: ActivityMemberInfoBinding? = null
     private val binding get() = _binding!!
+    private val viewModel by lazy {
+        ViewModelProvider(
+            this,
+            MemberInfoViewModelFactory(this)
+        )[MemberInfoViewModel::class.java]
+    }
     private val PICK_IMAGE_FROM_ALBUM = 1
+    private var selectedSpinnerItem: CommunityHomeData? = null
 
     // FirebaseStorage 초기화
     val storage = FirebaseStorage.getInstance()
@@ -38,23 +49,8 @@ class MemberInfoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         _binding = ActivityMemberInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        val communityHomeData = mutableListOf(
-            CommunityHomeData(R.drawable.dog, "강아지"),
-            CommunityHomeData(R.drawable.cat, "고양이"),
-            CommunityHomeData(R.drawable.raccoon, "라쿤"),
-            CommunityHomeData(R.drawable.fox, "여우"),
-            CommunityHomeData(R.drawable.chick, "새"),
-            CommunityHomeData(R.drawable.pig, "돼지"),
-            CommunityHomeData(R.drawable.snake, "파충류"),
-            CommunityHomeData(R.drawable.fish, "물고기"),
-        )
-        val adapter = MemberInfoAdapter(this, communityHomeData)
-        val spinner = binding.spPetType
-        spinner.adapter = adapter
-
-
-
+        initView()
+        viewModel.getMemberInfoSpinner()
         binding.btSelectPetPhoto.setOnClickListener {
             goGallery()
         }
@@ -67,7 +63,6 @@ class MemberInfoActivity : AppCompatActivity() {
             val currentUser = FirebaseAuth.getInstance().currentUser
 
             if (currentUser != null) {
-                // Check if petProfileUri is not null before proceeding
                 if (petProfile != null) {
                     contentUpload(petProfile)
                 } else {
@@ -103,31 +98,7 @@ class MemberInfoActivity : AppCompatActivity() {
                     R.id.buttonNoNeuter -> "중성화 안함"
                     else -> " "
                 }
-
-                binding.spPetType.viewTreeObserver.addOnGlobalLayoutListener { object :
-                    ViewTreeObserver.OnGlobalLayoutListener {
-                    override fun onGlobalLayout(){
-                        val spinnerWidth = binding.spPetType.width
-                        binding.spPetType.dropDownWidth = spinnerWidth
-                        binding.spPetType.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                    }
-                }
-                }
-                val spinnerPetType = communityHomeData[spinner.selectedItemPosition].petType
-
-                val petLogo = communityHomeData[spinner.selectedItemPosition].petLogo
-                val collectionName = when (spinnerPetType) {
-                    "강아지" -> "Dog"
-                    "고양이" -> "Cat"
-                    "라쿤" -> "Racoon"
-                    "여우" -> "Fox"
-                    "새" -> "Bird"
-                    "돼지" -> "Pig"
-                    "파충류" -> "Reptiles"
-                    "물고기" -> "Fish"
-                    else -> {}
-                }
-
+                val spinnerPetType = selectedSpinnerItem?.petType ?: ""
                 // User 모델을 생성
                 val user = User(
                     petAge,
@@ -140,15 +111,6 @@ class MemberInfoActivity : AppCompatActivity() {
                     selectedNeuterId.toString()
                 )
 
-       /*         val com = CommunityHomeData(petLogo, spinnerPetType, currentUser.uid)
-                val data = com.toMap()
-                FirebaseFirestore.getInstance().collection(collectionName as String)
-                    .add(data)
-                    .addOnSuccessListener {
-                    }
-                    .addOnFailureListener {
-
-                    }*/
 
                 user.uid = currentUser.uid
                 // Firestore의 "User" 컬렉션에 사용자 정보 저장
@@ -192,6 +154,35 @@ class MemberInfoActivity : AppCompatActivity() {
             datePicker.show(supportFragmentManager, datePicker.toString())
         }
     }
+
+    private fun initView() = with(binding) {
+        val adapter = MemberInfoAdapter(this@MemberInfoActivity, emptyList())
+        spPetType.adapter = adapter
+
+
+        spPetType.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parentView: AdapterView<*>?, selectedItemView: View?, position: Int, id: Long) {
+                selectedSpinnerItem = adapter.getItem(position) as? CommunityHomeData
+            }
+
+            override fun onNothingSelected(parentView: AdapterView<*>?) {
+
+            }
+        }
+        viewModel.petSpinnerType.observe(this@MemberInfoActivity) { spinnerType ->
+            adapter.updateData(spinnerType)
+        }
+        spPetType.viewTreeObserver.addOnGlobalLayoutListener(object :
+            ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                val spinnerWidth = spPetType.width
+                spPetType.dropDownWidth = spinnerWidth
+                spPetType.viewTreeObserver.removeOnGlobalLayoutListener(this)
+            }
+
+        })
+    }
+
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
