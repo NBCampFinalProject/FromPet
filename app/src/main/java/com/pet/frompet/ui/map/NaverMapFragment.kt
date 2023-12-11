@@ -46,6 +46,7 @@ import com.naver.maps.map.util.FusedLocationSource
 import com.pet.frompet.R
 import com.pet.frompet.data.model.User
 import com.pet.frompet.data.model.UserLocation
+import com.pet.frompet.data.repository.map.MapRepository
 import com.pet.frompet.databinding.FragmentMapBinding
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -76,7 +77,7 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
 
     private val requestMultiplePermissions =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-            if (permissions[android.Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+            if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
                 initMapView()
             }
         }
@@ -104,8 +105,7 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
     }
 
     private fun initMapView() {
-        val mapFragment =
-            childFragmentManager.findFragmentById(R.id.naver_map_fragment) as MapFragment?
+        val mapFragment = childFragmentManager.findFragmentById(R.id.naver_map_fragment) as MapFragment?
                 ?: MapFragment.newInstance().also {
                     childFragmentManager.beginTransaction().add(R.id.naver_map_fragment, it)
                         .commit()
@@ -116,7 +116,6 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
         locationSource = FusedLocationSource(this, LOCATION_PERMISSION_REQUEST_CODE)
 
         observeViewModel()
-
     }
 
     private fun observeViewModel() {
@@ -127,7 +126,8 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
                 val userLocation = userLocationInfo.userLocations
 
                 if (userUid.isNotEmpty() && userLocation.isNotEmpty()) {
-                    for (i in userUid.indices) setMark(userUid[i], userLocation[i])
+                    for (i in userUid.indices)
+                        setMark(userUid[i], userLocation[i])
                 }
             }
         }
@@ -151,10 +151,6 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
     override fun onMapReady(naverMap: NaverMap) {
         this.naverMap = naverMap
         setUpMap()
-
-        // Firebase
-        val database = Firebase.database
-        val locationRef = database.getReference("location")
 
         fusedLocationClient =
             LocationServices.getFusedLocationProviderClient(requireContext()) // 초기화
@@ -183,7 +179,8 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
 
                 naverMap.addOnCameraIdleListener {
                     resetMarker()
-                    viewModel.getloadLocationData(naverMap.contentBounds)
+                    viewModel.getloadLocationData(bounds = naverMap.contentBounds)
+
                 }
             }
         }
@@ -274,31 +271,30 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
             val intent = Intent(context, MapUserDetailActivity::class.java)
             intent.putExtra(MapUserDetailActivity.USER, user)
             startActivity(intent)
-
         }
     }
 
     /** 특정 사용자의 프로필 이미지 -> 마커 아이콘 **/
     private fun setUserProfileImage(userUid: String, marker: Marker) = lifecycleScope.launch {
-        val userDocument = firestore.collection("User").document(userUid).get()
-            .await() //컬렉셕에 사용자 uid로 접근하고 비동기로 동작 데이터 가져올때까지 기달
-        val user = userDocument.toObject(User::class.java) //위에서 얻은 문서들을 user클래스의 인스턴스로 변환
-        val profileUrl = user?.petProfile //유저인스턴스에 해당 사용자들의 프로필 사진 변수
-
-        if (profileUrl != null) {
-            val imageLoader = context?.let { Coil.imageLoader(it) }
-            val request = ImageRequest.Builder(requireActivity()).data(profileUrl).size(800, 800)
-                .transformations(
-                    CircleCropTransformation(), MapMakerBorder(requireContext(), 15f)
-                ) //이미지동그랗게
-                .target {
-                    val bitmap = (it as BitmapDrawable).bitmap
-                    val imageOverlay = OverlayImage.fromBitmap(bitmap)
-                    marker.icon = imageOverlay
-                }.build()
-
-            imageLoader?.execute(request)
-        }
+//        val userDocument = firestore.collection("User").document(userUid).get()
+//            .await() //컬렉셕에 사용자 uid로 접근하고 비동기로 동작 데이터 가져올때까지 기달
+//        val user = userDocument.toObject(User::class.java) //위에서 얻은 문서들을 user클래스의 인스턴스로 변환
+//        val profileUrl = user?.petProfile //유저인스턴스에 해당 사용자들의 프로필 사진 변수
+//
+//        if (profileUrl != null) {
+//            val imageLoader = context?.let { Coil.imageLoader(it) }
+//            val request = ImageRequest.Builder(requireActivity()).data(profileUrl).size(800, 800)
+//                .transformations(
+//                    CircleCropTransformation(), MapMakerBorder(requireContext(), 15f)
+//                ) //이미지동그랗게
+//                .target {
+//                    val bitmap = (it as BitmapDrawable).bitmap
+//                    val imageOverlay = OverlayImage.fromBitmap(bitmap)
+//                    marker.icon = imageOverlay
+//                }.build()
+//
+//            imageLoader?.execute(request)
+//        }
     }
 
     override fun onDestroyView() {
