@@ -68,11 +68,6 @@ class MemberInfoViewModel(
             }
         }
     }
-
-    fun updatePetProfileLiveData(imageUrl: String) {
-        _petProfileLiveData.value = imageUrl
-    }
-
     private fun showToast(message: String) {
         /*  Toast.makeText(this, message, Toast.LENGTH_SHORT).show()*/
     }

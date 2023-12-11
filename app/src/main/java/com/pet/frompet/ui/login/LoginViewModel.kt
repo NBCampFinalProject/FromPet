@@ -118,33 +118,7 @@ class LoginViewModel @Inject constructor(
             eventsChannel.send(AllEvents.Error(error[1]))
         }
     }
-    fun deleteAccount() = viewModelScope.launch {
-        try {
-            val result = userRepository.deleteAccount()
-            if(result){
-                eventsChannel.send(AllEvents.Message("회원 탈퇴 성공"))
-            }else{
-                eventsChannel.send(AllEvents.Error("회원 탈퇴 실패"))
-            }
-        }catch (e: Exception){
-            val error = e.toString().split(":").toTypedArray()
-            eventsChannel.send(AllEvents.Error(error[1]))
-        }
-    }
 
-
-    fun signOut() = viewModelScope.launch {
-        try {
-            val user = userRepository.signOut()
-            user?.let {
-                eventsChannel.send(AllEvents.Message("로그아웃 실패"))
-            } ?: eventsChannel.send(AllEvents.Message("로그아웃 성공"))
-            getCurrentUser()
-        } catch (e: Exception) {
-            val error = e.toString().split(":").toTypedArray()
-            eventsChannel.send(AllEvents.Error(error[1]))
-        }
-    }
 
     private fun getCurrentUser() = viewModelScope.launch {
         val user = userRepository.getCurrentUser()
@@ -175,21 +149,6 @@ class LoginViewModel @Inject constructor(
         }
 
     }
-
-    private fun saveGoogle(uid: String){
-        val userDocRef = FirebaseFirestore.getInstance().collection("User").document(uid)
-        val userData = hashMapOf(
-            "username" to "Google 사용자 이름",
-            "email" to "Google 사용자 이메일"
-        )
-        userDocRef.set(userData)
-            .addOnSuccessListener {
-            }
-            .addOnFailureListener { e ->
-            }
-
-    }
-
     sealed class AllEvents {
         data class Message(val message: String) : AllEvents()
         data class ErrorCode(val code: Int) : AllEvents()
@@ -204,7 +163,6 @@ class LoginViewModel @Inject constructor(
                 }
             }
             }
-        data class GoogleSignIn(val error: Intent):AllEvents()
         }
     }
 

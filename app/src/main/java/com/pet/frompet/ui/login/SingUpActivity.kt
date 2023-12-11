@@ -39,13 +39,16 @@ class SingUpActivity : AppCompatActivity() {
                 val email = userEmailEtv.text.toString()
                 val password = userPasswordEtv.text.toString()
                 val confirmPass = confirmPasswordEtv.text.toString()
-                if(email.isEmpty()){
-                    Toast.makeText(this@SingUpActivity,"이메일을 입력해주세요",Toast.LENGTH_SHORT).show()
-                }else if (password.length < 6){
-                    Toast.makeText(this@SingUpActivity,"비밀번호는 6자리 이상입니다.",Toast.LENGTH_SHORT).show()
-                }else{
-                    viewModel.signUpUser(email, password, confirmPass)
+                if (isValidEmail(email)) {
+                    if (password.length < 6) {
+                        showToast("비밀번호는 6자리 이상이어야 합니다.")
+                    } else {
+                        viewModel.signUpUser(email, password, confirmPass)
+                    }
+                } else {
+                    showToast("올바른 이메일 형식이 아닙니다.")
                 }
+
 
             }
             signInTxt.setOnClickListener {
@@ -143,5 +146,9 @@ class SingUpActivity : AppCompatActivity() {
     }
     private fun showToast(message: String) {
         Toast.makeText(this@SingUpActivity, message, Toast.LENGTH_SHORT).show()
+    }
+    private fun isValidEmail(email: String): Boolean {
+        val emailRegex = Regex("^[A-Za-z](.*)([@]{1})(.{1,})(\\.)(.{1,})")
+        return emailRegex.matches(email)
     }
 }
