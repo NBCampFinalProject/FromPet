@@ -6,16 +6,19 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.fragment.app.viewModels
 import coil.load
+import com.google.android.gms.location.LocationServices
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FirebaseFirestore
 import com.pet.frompet.MatchSharedViewModel
 import com.pet.frompet.R
 import com.pet.frompet.util.showToast
 import com.pet.frompet.databinding.ActivityChatUserDetailBinding
 import com.pet.frompet.data.model.User
+import com.pet.frompet.data.repository.home.HomeFilterRepository
+import com.pet.frompet.data.repository.home.HomeFilterRepositoryImpl
 import com.pet.frompet.ui.home.HomeFilterViewModel
 import com.pet.frompet.ui.home.HomeFilterViewModelFactory
 import com.pet.frompet.ui.setting.fcm.FCMNotificationViewModel
@@ -35,8 +38,16 @@ class ChatUserDetailActivity : AppCompatActivity() {
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
     private val currentUser : FirebaseUser? = FirebaseAuth.getInstance().currentUser
 
+    private val homeFilterRepository: HomeFilterRepository by lazy {
+        HomeFilterRepositoryImpl(
+            firestore = FirebaseFirestore.getInstance(),
+            database = FirebaseDatabase.getInstance(),
+            fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+        )
+    }
+
     private val filterViewModel: HomeFilterViewModel by viewModels {
-        HomeFilterViewModelFactory(this.application)
+        HomeFilterViewModelFactory(this.application, homeFilterRepository)
     }
 
 

@@ -1,15 +1,13 @@
 package com.pet.frompet.ui.map
 
-import android.app.Activity
 import android.content.Intent
-import android.opengl.Visibility
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.core.view.isVisible
-import androidx.fragment.app.viewModels
 import coil.load
+import com.google.android.gms.location.LocationServices
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -19,6 +17,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.pet.frompet.MatchSharedViewModel
 import com.pet.frompet.R
 import com.pet.frompet.data.model.User
+import com.pet.frompet.data.repository.home.HomeFilterRepository
+import com.pet.frompet.data.repository.home.HomeFilterRepositoryImpl
 import com.pet.frompet.databinding.ActivityMapUserDetailBinding
 import com.pet.frompet.ui.chat.activity.ChatPullScreenActivity
 import com.pet.frompet.ui.home.HomeFilterViewModel
@@ -36,9 +36,16 @@ class MapUserDetailActivity : AppCompatActivity() {
     private val currentUid = FirebaseAuth.getInstance().currentUser?.uid
     private val firestore = FirebaseFirestore.getInstance()
     private val fcmViewModel :FCMNotificationViewModel by viewModels()
-    private val filterViewModel: HomeFilterViewModel by viewModels {
-        HomeFilterViewModelFactory(this.application)
+    private val homeFilterRepository: HomeFilterRepository by lazy {
+
+        HomeFilterRepositoryImpl(
+            firestore = FirebaseFirestore.getInstance(),
+            database = FirebaseDatabase.getInstance(),
+            fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+        )
     }
+
+    private val homeFilterViewModel: HomeFilterViewModel by viewModels { HomeFilterViewModelFactory(application,homeFilterRepository) }
     val swipedUsersRef = FirebaseDatabase.getInstance().getReference("swipedUsers")
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,7 +83,7 @@ class MapUserDetailActivity : AppCompatActivity() {
                                 showToast("이미 상대방과 친구이거나 거절당한 상태입니다.", Toast.LENGTH_SHORT) // 상대방이 이미 스와이프하여 거절한 상태
                             } else {
                                 viewModel.like(otherUser.uid)
-                                filterViewModel.userSwiped(user.uid)
+                                homeFilterViewModel.userSwiped(user.uid)
                                 showToast("${otherUser.petName}님에게 친구신청을 걸었습니다!", Toast.LENGTH_SHORT)  // 상대방이 아직 스와이프하지 않았거나 거절하지 않은 상태
                                 firestore.collection("User").document(currentUid ?: "").get().addOnSuccessListener { docs ->
                                     val currentUserName = docs.getString("petName") ?: "알 수 없음"

@@ -22,7 +22,6 @@ import com.google.firebase.firestore.FirebaseFirestore
 class HomeFilterActivity : AppCompatActivity() {
     private var _binding: ActivityHomeFilterBinding? = null
     private val binding get() = _binding!!
-    val viewModel: HomeFilterViewModel by viewModels { HomeFilterViewModelFactory(application) }
 
     private val database: FirebaseDatabase = FirebaseDatabase.getInstance()
     private val currentUserUid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
