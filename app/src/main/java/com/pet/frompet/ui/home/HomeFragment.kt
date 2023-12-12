@@ -1,51 +1,42 @@
 package com.pet.frompet.ui.home
 
 //import FCMTokenManagerViewModel
-import HomeBottomSheetFragment
 import android.app.Activity
 import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
-import android.util.Log
 import android.util.Pair
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.AccelerateInterpolator
 import android.view.animation.Animation
 import android.view.animation.ScaleAnimation
 import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.fragment.app.FragmentManager
-import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.gms.location.LocationServices
 import com.pet.frompet.databinding.FragmentHomeBinding
 import com.pet.frompet.MatchSharedViewModel
 import com.pet.frompet.R
 import com.pet.frompet.data.model.Filter
-import com.pet.frompet.data.model.User
 import com.pet.frompet.ui.chat.activity.ChatClickUserDetailActivity
 import com.pet.frompet.ui.setting.fcm.FCMNotificationViewModel
 import com.pet.frompet.util.showToast
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FirebaseFirestore
+import com.pet.frompet.data.repository.home.HomeFilterRepository
+import com.pet.frompet.data.repository.home.HomeFilterRepositoryImpl
 import com.yuyakaido.android.cardstackview.CardStackLayoutManager
 import com.yuyakaido.android.cardstackview.CardStackListener
 import com.yuyakaido.android.cardstackview.Direction
-import com.yuyakaido.android.cardstackview.Duration
-import com.yuyakaido.android.cardstackview.SwipeAnimationSetting
 
 class HomeFragment : Fragment() {
 
@@ -60,8 +51,16 @@ class HomeFragment : Fragment() {
     private lateinit var manager : CardStackLayoutManager
     private val viewModel: MatchSharedViewModel by viewModels()
     private val fcmViewModel: FCMNotificationViewModel by viewModels()
+    private val homeFilterRepository: HomeFilterRepository by lazy {
+        HomeFilterRepositoryImpl(
+            firestore = FirebaseFirestore.getInstance(),
+            database = FirebaseDatabase.getInstance(),
+            fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+        )
+    }
+
     private val filterViewModel: HomeFilterViewModel by viewModels {
-        HomeFilterViewModelFactory(requireActivity().application)
+        HomeFilterViewModelFactory(requireActivity().application, homeFilterRepository)
     }
 
 
@@ -109,6 +108,7 @@ class HomeFragment : Fragment() {
             }
 
             override fun onCardSwiped(direction: Direction?)  {
+
                 when (direction) {
                     Direction.Left -> {
                         // 오른쪽으로 스와이프 (Like) 했을 때의 처리
@@ -354,6 +354,7 @@ class HomeFragment : Fragment() {
             // 카드가 더 이상 없을 때 처리
         }
     }
+
     override fun onDestroyView() {
             _binding = null
             super.onDestroyView()
