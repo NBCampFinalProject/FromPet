@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import coil.Coil
 import coil.request.ImageRequest
@@ -26,6 +27,7 @@ import com.google.android.gms.location.LocationServices
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.ktx.database
 import com.google.firebase.firestore.FirebaseFirestore
@@ -54,16 +56,25 @@ import java.lang.NumberFormatException
 
 class NaverMapFragment : Fragment(), OnMapReadyCallback {
 
-    private val viewModel: MapViewModel by viewModels()
+    private val viewModel by lazy {
+        ViewModelProvider(
+            this,
+            MapViewModelFactory(firebaseDatabase, firestore)
+        ).get(MapViewModel::class.java)
+    }
 
     private lateinit var locationSource: FusedLocationSource
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
     private var naverMap: NaverMap? = null
-    private val firestore = FirebaseFirestore.getInstance()
-    private val database = Firebase.database
-    private val locationRef = database.getReference("location")
 
+    private val firebaseDatabase: FirebaseDatabase by lazy {
+        FirebaseDatabase.getInstance()
+    }
+
+    private val firestore: FirebaseFirestore by lazy {
+        FirebaseFirestore.getInstance()
+    }
     private var _binding: FragmentMapBinding? = null
     private val binding get() = _binding!!
 
@@ -151,11 +162,6 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
     override fun onMapReady(naverMap: NaverMap) {
         this.naverMap = naverMap
         setUpMap()
-
-        // Firebase
-        val database = Firebase.database
-        val locationRef = database.getReference("location")
-
         fusedLocationClient =
             LocationServices.getFusedLocationProviderClient(requireContext()) // 초기화
         if (ActivityCompat.checkSelfPermission(
@@ -197,6 +203,7 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
                 }
             }
         })
+        viewModel.getOtherUserLocations()
     }
 
 

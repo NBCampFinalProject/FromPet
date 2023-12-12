@@ -42,7 +42,6 @@ class CategoryRepositoryImp(
                 .orderBy("timestamp",Query.Direction.DESCENDING)
                 .get()
                 .await()
-            Log.e("sshImp", "$petType")
             for (document in querySnapshot.documents) {
                 val title = document.getString("title") ?: ""
                 val tag = document.getString("tag") ?: ""

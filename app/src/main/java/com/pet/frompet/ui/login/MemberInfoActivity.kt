@@ -4,9 +4,16 @@ import android.content.Intent
 import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
 import android.view.ViewTreeObserver
+import android.widget.AdapterView
 import android.widget.Toast
+import androidx.core.content.ContentProviderCompat.requireContext
+import androidx.lifecycle.ViewModelProvider
 import com.bumptech.glide.Glide
+import com.google.android.material.datepicker.CalendarConstraints
+import com.google.android.material.datepicker.DateValidatorPointBackward
+import com.google.android.material.datepicker.DateValidatorPointForward
 import com.pet.frompet.databinding.ActivityMemberInfoBinding
 import com.pet.frompet.data.model.User
 import com.pet.frompet.MainActivity
@@ -18,6 +25,8 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import com.google.firebase.storage.UploadTask
+import com.pet.frompet.util.showToast
+import java.lang.Exception
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -25,11 +34,17 @@ import java.util.Locale
 class MemberInfoActivity : AppCompatActivity() {
     private var _binding: ActivityMemberInfoBinding? = null
     private val binding get() = _binding!!
+    private val viewModel by lazy {
+        ViewModelProvider(
+            this,
+            MemberInfoViewModelFactory(this, storage, FirebaseFirestore.getInstance())
+        )[MemberInfoViewModel::class.java]
+    }
     private val PICK_IMAGE_FROM_ALBUM = 1
+    private var selectedSpinnerItem: CommunityHomeData? = null
 
     // FirebaseStorage 초기화
     val storage = FirebaseStorage.getInstance()
-    private var petProfile: String? = null
     private var petGender: String = "" // 성별 정보 저장 변수
     private var petAge: Int = 0
 
@@ -38,160 +53,142 @@ class MemberInfoActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         _binding = ActivityMemberInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        val communityHomeData = mutableListOf(
-            CommunityHomeData(R.drawable.dog, "강아지"),
-            CommunityHomeData(R.drawable.cat, "고양이"),
-            CommunityHomeData(R.drawable.raccoon, "라쿤"),
-            CommunityHomeData(R.drawable.fox, "여우"),
-            CommunityHomeData(R.drawable.chick, "새"),
-            CommunityHomeData(R.drawable.pig, "돼지"),
-            CommunityHomeData(R.drawable.snake, "파충류"),
-            CommunityHomeData(R.drawable.fish, "물고기"),
-        )
-        val adapter = MemberInfoAdapter(this, communityHomeData)
-        val spinner = binding.spPetType
-        spinner.adapter = adapter
-
-
-
+        initView()
+        viewModel.getMemberInfoSpinner()
         binding.btSelectPetPhoto.setOnClickListener {
             goGallery()
+        }
+        viewModel.saveFireStore.observe(this) { result ->
+            if (result.isSuccess) {
+                showToast("회원정보 등록 성공")
+            } else {
+                showToast("Firestore에 저장 중 에러 발생: ${result.exceptionOrNull()?.message}")
+            }
+        }
+        viewModel.petProfileLiveData.observe(this) { imageUrl ->
+            Glide.with(this)
+                .load(imageUrl)
+                .into(binding.imageViewAddPet)
         }
 
         binding.btComplete.setOnClickListener {
             val petName = binding.textInputEditTextAddPetName.text.toString()
             val petDescription = binding.textInputEditTextPetDescription.text.toString()
             val petIntroduction = binding.textInputEditTextPetCharacter.text.toString()
-            // Firebase 현재 사용자 가져오기
+            val selectedGenderId = binding.toggleButtonPetGender.checkedButtonId
+            if (selectedGenderId == R.id.buttonHe) {
+                petGender = "수컷"
+            } else if (selectedGenderId == R.id.buttonShe) {
+                petGender = "암컷"
+            }
+            val selectedNeuterId = when (binding.toggleButtonNeuter.checkedButtonId) {
+                R.id.buttonNeuter -> "중성화"
+                R.id.buttonNoNeuter -> "중성화 안함"
+                else -> " "
+            }
+            val spinnerPetType = selectedSpinnerItem?.petType ?: ""
+
             val currentUser = FirebaseAuth.getInstance().currentUser
-
             if (currentUser != null) {
-                // Check if petProfileUri is not null before proceeding
-                if (petProfile != null) {
-                    contentUpload(petProfile)
+                // LiveData를 통해 이미지 URL을 가져옴
+                val imageUrl = viewModel.petProfileLiveData.value
+
+                // 예외 처리: 입력 값이 비어 있는 경우
+                if (petName.isEmpty() || petDescription.isEmpty() || petIntroduction.isEmpty()) {
+                    showToast("모든 항목을 입력하세요.")
+                    return@setOnClickListener
+                }
+
+                if (imageUrl != null) {
+                    val user = User(
+                        petAge,
+                        petDescription,
+                        petGender,
+                        petIntroduction,
+                        petName,
+                        imageUrl,
+                        spinnerPetType,
+                        selectedNeuterId.toString()
+                    )
+                    user.uid = currentUser.uid
+
+                    // Firestore에 저장
+                    viewModel.saveToFireStore(user)
+
+                    val intent = Intent(this, MainActivity::class.java)
+                    startActivity(intent)
+                    finish()
                 } else {
-                    showToast(getString(R.string.profile_image_choose))
-                    return@setOnClickListener
+                    showToast("이미지가 업로드되지 않았습니다.")
                 }
-
-                if (petName.isEmpty()) {
-                    showToast("펫 이름을 입력하세요.")
-                    return@setOnClickListener
-                }
-
-                if (petDescription.isEmpty()) {
-                    showToast("펫 특징을 입력하세요.")
-                    return@setOnClickListener
-                }
-
-                if (petIntroduction.isEmpty()) {
-                    showToast("펫 소개를 입력하세요.")
-                    return@setOnClickListener
-                }
-
-
-                val selectedGenderId = binding.toggleButtonPetGender.checkedButtonId
-                if (selectedGenderId == R.id.buttonHe) {
-                    petGender = "수컷"
-                } else if (selectedGenderId == R.id.buttonShe) {
-                    petGender = "암컷"
-                }
-
-                val selectedNeuterId = when (binding.toggleButtonNeuter.checkedButtonId) {
-                    R.id.buttonNeuter -> "중성화"
-                    R.id.buttonNoNeuter -> "중성화 안함"
-                    else -> " "
-                }
-
-                binding.spPetType.viewTreeObserver.addOnGlobalLayoutListener { object :
-                    ViewTreeObserver.OnGlobalLayoutListener {
-                    override fun onGlobalLayout(){
-                        val spinnerWidth = binding.spPetType.width
-                        binding.spPetType.dropDownWidth = spinnerWidth
-                        binding.spPetType.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                    }
-                }
-                }
-                val spinnerPetType = communityHomeData[spinner.selectedItemPosition].petType
-
-                val petLogo = communityHomeData[spinner.selectedItemPosition].petLogo
-                val collectionName = when (spinnerPetType) {
-                    "강아지" -> "Dog"
-                    "고양이" -> "Cat"
-                    "라쿤" -> "Racoon"
-                    "여우" -> "Fox"
-                    "새" -> "Bird"
-                    "돼지" -> "Pig"
-                    "파충류" -> "Reptiles"
-                    "물고기" -> "Fish"
-                    else -> {}
-                }
-
-                // User 모델을 생성
-                val user = User(
-                    petAge,
-                    petDescription,
-                    petGender,
-                    petIntroduction,
-                    petName,
-                    petProfile?.toString(),
-                    spinnerPetType,
-                    selectedNeuterId.toString()
-                )
-
-       /*         val com = CommunityHomeData(petLogo, spinnerPetType, currentUser.uid)
-                val data = com.toMap()
-                FirebaseFirestore.getInstance().collection(collectionName as String)
-                    .add(data)
-                    .addOnSuccessListener {
-                    }
-                    .addOnFailureListener {
-
-                    }*/
-
-                user.uid = currentUser.uid
-                // Firestore의 "User" 컬렉션에 사용자 정보 저장
-                FirebaseFirestore.getInstance().collection("User")
-                    .document(currentUser.uid)
-                    .set(user)
-                    .addOnSuccessListener {
-                        val mainIntent = Intent(this, com.pet.frompet.MainActivity::class.java)
-                        startActivity(mainIntent)
-                        showToast(getString(R.string.update_info))
-                        finish()
-                    }
-                    .addOnFailureListener {
-                        // 정보 저장 실패
-                        showToast(getString(R.string.failure_info))
-                    }
             }
         }
 
         binding.textInputPetBirthText.setOnClickListener {
+            val currentMillis = System.currentTimeMillis()
+
+            val constraintsBuilder = CalendarConstraints.Builder()
+                .setValidator(DateValidatorPointBackward.before(currentMillis)) // Allow dates in the past
+
             val datePicker = MaterialDatePicker.Builder.datePicker()
                 .setTitleText("날짜선택")
-                .setSelection(MaterialDatePicker.todayInUtcMilliseconds())
+                .setSelection(currentMillis)
+                .setCalendarConstraints(constraintsBuilder.build())
                 .build()
 
+            datePicker.show(supportFragmentManager, datePicker.toString())
+
             datePicker.addOnPositiveButtonClickListener { selectedDateInMillis ->
-                val selectDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                    .format(Date(selectedDateInMillis))
+                val selectedDate = Date(selectedDateInMillis)
+                val currentDate = Date()
+
+                val selectDate =
+                    SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(selectedDate)
                 binding.textInputPetBirthText.setText(selectDate)
 
                 // 선택한 날짜를 이용하여 나이를 계산하고 petAge 변수에 할당
                 val birthDate =
                     SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(selectDate)
                 if (birthDate != null) {
-                    val currentDate = Date()
                     val ageMilliseconds = currentDate.time - birthDate.time
                     val ageYears = (ageMilliseconds / (1000L * 60 * 60 * 24 * 365.25)).toInt()
                     petAge = ageYears
                 }
             }
-            datePicker.show(supportFragmentManager, datePicker.toString())
         }
     }
+
+    private fun initView() = with(binding) {
+        val adapter = MemberInfoAdapter(this@MemberInfoActivity, emptyList())
+        spPetType.adapter = adapter
+        spPetType.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parentView: AdapterView<*>?,
+                selectedItemView: View?,
+                position: Int,
+                id: Long
+            ) {
+                selectedSpinnerItem = adapter.getItem(position) as? CommunityHomeData
+            }
+
+            override fun onNothingSelected(parentView: AdapterView<*>?) {
+
+            }
+        }
+        viewModel.petSpinnerType.observe(this@MemberInfoActivity) { spinnerType ->
+            adapter.updateData(spinnerType)
+        }
+        spPetType.viewTreeObserver.addOnGlobalLayoutListener(object :
+            ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                val spinnerWidth = spPetType.width
+                spPetType.dropDownWidth = spinnerWidth
+                spPetType.viewTreeObserver.removeOnGlobalLayoutListener(this)
+            }
+
+        })
+    }
+
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -205,35 +202,7 @@ class MemberInfoActivity : AppCompatActivity() {
 
     // contentUpload() 함수 내부에서 이미지를 Firebase Storage에 업로드할 수 있습니다.
     private fun contentUpload(uri: String?) {
-        uri?.let { petProfileUri ->
-            val timestamp = SimpleDateFormat(
-                getString(R.string.member_info_timestamp),
-                Locale.getDefault()
-            ).format(Date())
-            val fileName = "IMAGE_$timestamp.png"
-            // 서버 스토리지에 접근하기
-            val storageRef = storage.reference.child("images").child(fileName)
-            // 서버 스토리지에 파일 업로드하기
-            storageRef.putFile(petProfileUri)
-                .continueWithTask { task ->
-                    if (!task.isSuccessful) {
-                        task.exception?.let { throw it }
-                    }
-                    storageRef.downloadUrl
-                }
-                .addOnSuccessListener { uri ->
-                    val imageUrl = uri.toString()
-                    showToast("이미지 업로드 성공")
-                    petProfile = imageUrl
-                    Glide.with(this)
-                        .load(imageUrl)
-                        .into(binding.imageViewAddPet)//ㅁㄴㅇㅁㄴㅇ
-                }
-                .addOnCanceledListener {
-                    // 업로드 취소 시
-                }
-
-        }
+        viewModel.contentUpload(uri)
     }
 
     @Deprecated("Deprecated in Java")
