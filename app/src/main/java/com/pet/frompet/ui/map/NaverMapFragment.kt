@@ -10,13 +10,12 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import coil.Coil
 import coil.request.ImageRequest
@@ -24,16 +23,12 @@ import coil.transform.CircleCropTransformation
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ktx.database
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
 import com.naver.maps.geometry.LatLng
-import com.naver.maps.geometry.LatLngBounds
 import com.naver.maps.map.CameraAnimation
-import com.naver.maps.map.CameraPosition
 import com.naver.maps.map.CameraUpdate
 import com.naver.maps.map.LocationTrackingMode
 import com.naver.maps.map.MapFragment
@@ -49,20 +44,31 @@ import com.pet.frompet.data.model.UserLocation
 import com.pet.frompet.databinding.FragmentMapBinding
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import ted.gun0912.clustering.naver.TedNaverClustering
-import java.lang.NumberFormatException
 
 class NaverMapFragment : Fragment(), OnMapReadyCallback {
 
-    private val viewModel: MapViewModel by viewModels()
+    private val viewModel by lazy {
+        ViewModelProvider(
+            this,
+            MapViewModelFactory(firebaseDatabase, firestore)
+        ).get(MapViewModel::class.java)
+
+    }
+
+//    private val viewModel: MapViewModel by viewModels()
 
     private lateinit var locationSource: FusedLocationSource
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
+    private val firebaseDatabase : FirebaseDatabase by lazy {
+        FirebaseDatabase.getInstance()
+    }
+
+    private val firestore: FirebaseFirestore by lazy {
+        FirebaseFirestore.getInstance()
+    }
     private var naverMap: NaverMap? = null
-    private val firestore = FirebaseFirestore.getInstance()
-    private val database = Firebase.database
-    private val locationRef = database.getReference("location")
+//    private val firestore = FirebaseFirestore.getInstance()
 
     private var _binding: FragmentMapBinding? = null
     private val binding get() = _binding!!
@@ -156,6 +162,7 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
         val database = Firebase.database
         val locationRef = database.getReference("location")
 
+        //위치 권한 확인
         fusedLocationClient =
             LocationServices.getFusedLocationProviderClient(requireContext()) // 초기화
         if (ActivityCompat.checkSelfPermission(
@@ -167,20 +174,20 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
             return
         }
 
+        // 마지막 위치 가져옴
         fusedLocationClient.lastLocation.addOnSuccessListener { location: Location? ->
             if (location != null) {
 
                 Log.d("뷰모델", "Latitude: ${location.latitude}, Longitude: ${location.longitude}")
-                // 사용자 현재 위치 파베에 업로드
-//                val userLocation = UserLocation(location.latitude, location.longitude)
-//                locationRef.child(currentUserId).setValue(userLocation) //viewmodel로 1 --
                 viewModel.currentLocationUpload(location.latitude, location.longitude)
 
+                // 카메라를 현재 위치로 이동
                 val cameraUpdate =
                     CameraUpdate.scrollTo(LatLng(location.latitude, location.longitude))
                         .animate(CameraAnimation.Easing, 2000).reason(CameraUpdate.REASON_GESTURE)
                 naverMap.moveCamera(cameraUpdate)
 
+                //지도 이동 멈출 시
                 naverMap.addOnCameraIdleListener {
                     resetMarker()
                     viewModel.getloadLocationData(naverMap.contentBounds)
@@ -197,6 +204,8 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
                 }
             }
         })
+
+        viewModel.getOtherUserLocations()
     }
 
 
@@ -284,6 +293,7 @@ class NaverMapFragment : Fragment(), OnMapReadyCallback {
             .await() //컬렉셕에 사용자 uid로 접근하고 비동기로 동작 데이터 가져올때까지 기달
         val user = userDocument.toObject(User::class.java) //위에서 얻은 문서들을 user클래스의 인스턴스로 변환
         val profileUrl = user?.petProfile //유저인스턴스에 해당 사용자들의 프로필 사진 변수
+
 
         if (profileUrl != null) {
             val imageLoader = context?.let { Coil.imageLoader(it) }
