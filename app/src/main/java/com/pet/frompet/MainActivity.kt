@@ -14,10 +14,14 @@ import com.pet.frompet.databinding.ActivityMainBinding
 import com.pet.frompet.ui.login.LoginActivity
 import com.google.firebase.auth.FirebaseAuth
 import android.Manifest
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatDelegate
+import com.google.android.gms.location.LocationServices
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.firestore.FirebaseFirestore
+import com.pet.frompet.data.repository.home.HomeFilterRepository
+import com.pet.frompet.data.repository.home.HomeFilterRepositoryImpl
 import com.pet.frompet.ui.home.HomeFilterViewModel
 import com.pet.frompet.ui.home.HomeFilterViewModelFactory
 import com.pet.frompet.util.showToast
@@ -30,7 +34,16 @@ class MainActivity : AppCompatActivity() {
 
     private val fcmTokenManager = FCMTokenManager()
     private val binding get() = _binding!!
-   private val homeFilterViewModel: HomeFilterViewModel by viewModels { HomeFilterViewModelFactory(application) }
+    private val homeFilterRepository: HomeFilterRepository by lazy {
+
+        HomeFilterRepositoryImpl(
+            firestore = FirebaseFirestore.getInstance(),
+            database = FirebaseDatabase.getInstance(),
+            fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+        )
+    }
+
+    private val homeFilterViewModel: HomeFilterViewModel by viewModels { HomeFilterViewModelFactory(application,homeFilterRepository) }
 
     private val locationPermissions = arrayOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
@@ -41,8 +54,8 @@ class MainActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             val granted = permissions.entries.all { it.value }
             if (granted) {
-                showToast("위치 권한이 승인되었습니다.\n필터기능을 위해서 앱을 재실행 해주세요.", Toast.LENGTH_SHORT)
-                homeFilterViewModel.getCurrentUserLocation()
+                showToast("위치 권한이 승인되었습니다.", Toast.LENGTH_SHORT)
+                homeFilterViewModel.loadCurrentUserLocationAndUpdate()
                 homeFilterViewModel.currentFilter?.let {
                     homeFilterViewModel.filterUsers(it)
                 }
