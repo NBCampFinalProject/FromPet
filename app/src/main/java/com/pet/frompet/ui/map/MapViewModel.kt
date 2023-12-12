@@ -54,7 +54,7 @@ class MapViewModelFactory(
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MapViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST") //뭐지 ?
+            @Suppress("UNCHECKED_CAST")
             return MapViewModel(MapRepositoryImpl(firebaseDatabase, firestore)) as T
         } else {
             throw IllegalArgumentException("Unknown ViewModel class")
