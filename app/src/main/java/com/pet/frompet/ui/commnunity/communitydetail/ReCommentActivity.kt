@@ -7,8 +7,6 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
-import android.widget.Button
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -22,7 +20,6 @@ import com.pet.frompet.data.model.CommentData
 import com.pet.frompet.data.model.CommunityData
 import com.pet.frompet.data.model.ReCommentData
 import com.pet.frompet.databinding.ActivityReCommentBinding
-import com.pet.frompet.ui.commnunity.community.CommunityViewModel
 import com.pet.frompet.util.showToast
 
 class ReCommentActivity : AppCompatActivity() {
@@ -31,7 +28,7 @@ class ReCommentActivity : AppCompatActivity() {
     private lateinit var adapter: CommentAdapter
     private val store = FirebaseFirestore.getInstance()
     private var communityData: CommunityData? = null
-    private val viewModel: CommunityViewModel by viewModels()
+    private val viewModel: CommentViewModel by viewModels()
 
     private fun hideKeyboard() {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager
@@ -106,55 +103,6 @@ class ReCommentActivity : AppCompatActivity() {
             finish()
         }
         loadComments()
-    }
-
-    private fun addReComment(receivedCommentData: CommentData, reCommentText: String) {
-        val reCommentId = store.collection("Community")
-            .document(receivedCommentData.postDocumentId)
-            .collection("Comment")
-            .document(receivedCommentData.commentId)
-            .collection("ReComment")
-            .document().id
-
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
-
-        if (uid != null) {
-            val reCommentData = ReCommentData(
-                reCommentId,
-                receivedCommentData.commentId,
-                reCommentText,
-                uid,
-                System.currentTimeMillis()
-            )
-
-            store.collection("Community")
-                .document(receivedCommentData.postDocumentId)
-                .collection("Comment")
-                .document(receivedCommentData.commentId)
-                .collection("ReComment")
-                .document(reCommentId)
-                .set(reCommentData)
-                .addOnSuccessListener {
-                    val commentDocumentRef = store.collection("Community")
-                        .document(receivedCommentData.postDocumentId)
-                        .collection("Comment")
-                        .document(receivedCommentData.commentId)
-                    store.runTransaction { transaction ->
-                        val snapshot = transaction.get(commentDocumentRef)
-                        val newReCommentCount = (snapshot.getLong("reCommentCount") ?: 0) + 1
-                        transaction.update(commentDocumentRef, "reCommentCount", newReCommentCount)
-                        null
-                    }
-                    hideKeyboard()
-                    binding.editTextText.text.clear()
-                    adapter.reloadReComments(receivedCommentData)
-                }
-                .addOnFailureListener {
-                    showToast("대댓글 추가에 실패했습니다", Toast.LENGTH_SHORT)
-                }
-        } else {
-            showToast("사용자 정보를 불러오는데 실패했습니다.", Toast.LENGTH_SHORT)
-        }
     }
     private fun showBottomSheet(commentData: CommentData) {
         val layoutId = if (commentData.authorUid == FirebaseAuth.getInstance().currentUser?.uid) {
@@ -442,10 +390,4 @@ class ReCommentActivity : AppCompatActivity() {
                 textView.text = reCommentCount.toString()
             }
     }
-
-
-
-
-
-
 }

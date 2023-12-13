@@ -15,6 +15,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.pet.frompet.data.model.CommentData
 import com.pet.frompet.data.model.ReCommentData
+import com.pet.frompet.data.model.User
 
 class CommunityViewModel(
 ) : ViewModel() {
@@ -42,6 +43,8 @@ class CommunityViewModel(
     private val store = FirebaseFirestore.getInstance()
     private val _reCommentAdded = MutableLiveData<Boolean>()
     val reCommentAdded: LiveData<Boolean> = _reCommentAdded
+    private val _commentAdded = MutableLiveData<Boolean>()
+    val commentAdded: LiveData<Boolean> get() = _commentAdded
 
 
     fun getCommunityData(petType: String): LiveData<List<CommunityData>> {
@@ -86,43 +89,52 @@ class CommunityViewModel(
                 _deleteResult.value = task.isSuccessful
             }
     }
-    fun addReComment(receivedCommentData: CommentData, reCommentText: String) {
-        val reCommentId = store.collection("Community")
-            .document(receivedCommentData.postDocumentId)
+    fun addComment(communityData: CommunityData?, commentText: String) {
+        val commentId = store.collection("Community")
+            .document(communityData?.docsId ?: "")
             .collection("Comment")
-            .document(receivedCommentData.commentId)
-            .collection("ReComment")
             .document().id
 
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (commentText.isNotEmpty()) {
+            val uid = currentUserId
+            if (uid != null) {
+                store.collection("User")
+                    .document(uid)
+                    .get()
+                    .addOnSuccessListener { userSnapshot ->
+                        val user = userSnapshot.toObject(User::class.java)
+                        if (user != null) {
+                            val commentData = CommentData(
+                                commentId,
+                                content = commentText,
+                                authorUid = currentUser?.uid ?: "",
+                                postDocumentId = communityData?.docsId ?: "",
+                                timestamp = System.currentTimeMillis()
+                            )
 
-        if (uid != null) {
-            val reCommentData = ReCommentData(
-                reCommentId,
-                receivedCommentData.commentId,
-                reCommentText,
-                uid,
-                System.currentTimeMillis()
-            )
-
-            store.collection("Community")
-                .document(receivedCommentData.postDocumentId)
-                .collection("Comment")
-                .document(receivedCommentData.commentId)
-                .collection("ReComment")
-                .document(reCommentId)
-                .set(reCommentData)
-                .addOnSuccessListener {
-                    _reCommentAdded.value = true
-                }
-                .addOnFailureListener {
-                    _reCommentAdded.value = false
-                }
+                            store.collection("Community")
+                                .document(communityData?.docsId ?: "")
+                                .collection("Comment")
+                                .document(commentId)
+                                .set(commentData)
+                                .addOnSuccessListener {
+                                    _commentAdded.value = true
+                                }
+                                .addOnFailureListener {
+                                    _commentAdded.value = false
+                                }
+                        } else {
+                            _commentAdded.value = false
+                        }
+                    }
+                    .addOnFailureListener {
+                        _commentAdded.value = false
+                    }
+            }
         } else {
-            _reCommentAdded.value = false
+            _commentAdded.value = false
         }
     }
-
 }
 
 
