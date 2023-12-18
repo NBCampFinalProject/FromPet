@@ -1,4 +1,5 @@
 package com.pet.frompet.ui.commnunity.communitydetail
+
 import android.content.Intent
 import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
@@ -12,6 +13,8 @@ import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.firebase.auth.FirebaseAuth
@@ -30,6 +33,7 @@ class ReCommentActivity : AppCompatActivity() {
     private val store = FirebaseFirestore.getInstance()
     private var communityData: CommunityData? = null
 
+    private lateinit var viewModel: ReCommentViewModel
     private fun hideKeyboard() {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager
         imm?.hideSoftInputFromWindow(currentFocus?.windowToken, 0)
@@ -39,6 +43,8 @@ class ReCommentActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityReCommentBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        viewModel = ViewModelProvider(this).get(ReCommentViewModel::class.java)
 
 
         communityData = intent.getParcelableExtra<CommunityData>("communityData")
@@ -96,6 +102,7 @@ class ReCommentActivity : AppCompatActivity() {
         loadComments()
     }
 
+    // 1번
     private fun addReComment(receivedCommentData: CommentData, reCommentText: String) {
         val reCommentId = store.collection("Community")
             .document(receivedCommentData.postDocumentId)
@@ -144,6 +151,7 @@ class ReCommentActivity : AppCompatActivity() {
             showToast("사용자 정보를 불러오는데 실패했습니다.", Toast.LENGTH_SHORT)
         }
     }
+
     private fun showBottomSheet(commentData: CommentData) {
         val layoutId = if (commentData.authorUid == FirebaseAuth.getInstance().currentUser?.uid) {
             R.layout.bottom_sheet_layout
@@ -169,46 +177,74 @@ class ReCommentActivity : AppCompatActivity() {
             }
 
             deleteTextView.setOnClickListener {
-                val commentDocumentRef = store.collection("Community")
-                    .document(communityData?.docsId ?: "")
-                    .collection("Comment")
-                    .document(commentData.commentId)
-                commentDocumentRef.delete()
-                    .addOnSuccessListener {
+                viewModel.deleteComment(
+                    communityData?.docsId ?: "",
+                    commentData.commentId,
+                    onSuccess = {
                         showToast("댓글이 삭제되었습니다", Toast.LENGTH_SHORT)
                         dialog.dismiss()
                         finish()
-                    }
-                    .addOnFailureListener {
+                    },
+                    onFailure = {
                         showToast("댓글 삭제에 실패했습니다", Toast.LENGTH_SHORT)
                         dialog.dismiss()
                     }
+
+                )
+//                val commentDocumentRef = store.collection("Community")
+//                    .document(communityData?.docsId ?: "")
+//                    .collection("Comment")
+//                    .document(commentData.commentId)
+//                commentDocumentRef.delete()
+//                    .addOnSuccessListener {
+//                        showToast("댓글이 삭제되었습니다", Toast.LENGTH_SHORT)
+//                        dialog.dismiss()
+//                        finish()
+//                    }
+//                    .addOnFailureListener {
+//                        showToast("댓글 삭제에 실패했습니다", Toast.LENGTH_SHORT)
+//                        dialog.dismiss()
+//                    }
+
             }
         } else {
             val reportTextView = view.findViewById<TextView>(R.id.bottom_sheet_report)
 
             reportTextView.setOnClickListener {
-                val commentDocumentRef = store.collection("Community")
-                    .document(communityData?.docsId ?: "")
-                    .collection("Comment")
-                    .document(commentData.commentId)
-                store.runTransaction { transaction ->
-                    val snapshot = transaction.get(commentDocumentRef)
-                    val newReportCount = snapshot.getLong("reportCount")?.plus(1) ?: 1
-                    transaction.update(commentDocumentRef, "reportCount", newReportCount)
-
-                    // 신고 횟수가 10회 이상이면 해당 댓글 삭제, 나중에 신고는 개인 당 한 번만 할 수 있게 바꿀 예정
-                    if (newReportCount >= 10) {
-                        transaction.delete(commentDocumentRef)
+                viewModel.reportComment(
+                    communityData?.docsId ?: "",
+                    commentData.commentId,
+                    onSuccess = {
+                        showToast("신고가 접수되었습니다", Toast.LENGTH_SHORT)
+                        dialog.dismiss()
+                    },
+                    onFailure = {
+                        showToast("신고 접수에 실패했습니다", Toast.LENGTH_SHORT)
+                        dialog.dismiss()
                     }
-                    null
-                }.addOnSuccessListener {
-                    showToast("신고가 접수되었습니다", Toast.LENGTH_SHORT)
-                    dialog.dismiss()
-                }.addOnFailureListener {
-                    showToast("신고 접수에 실패했습니다", Toast.LENGTH_SHORT)
-                    dialog.dismiss()
-                }
+                )
+
+//                val commentDocumentRef = store.collection("Community")
+//                    .document(communityData?.docsId ?: "")
+//                    .collection("Comment")
+//                    .document(commentData.commentId)
+//                store.runTransaction { transaction ->
+//                    val snapshot = transaction.get(commentDocumentRef)
+//                    val newReportCount = snapshot.getLong("reportCount")?.plus(1) ?: 1
+//                    transaction.update(commentDocumentRef, "reportCount", newReportCount)
+//
+//                    // 신고 횟수가 10회 이상이면 해당 댓글 삭제, 나중에 신고는 개인 당 한 번만 할 수 있게 바꿀 예정
+//                    if (newReportCount >= 10) {
+//                        transaction.delete(commentDocumentRef)
+//                    }
+//                    null
+//                }.addOnSuccessListener {
+//                    showToast("신고가 접수되었습니다", Toast.LENGTH_SHORT)
+//                    dialog.dismiss()
+//                }.addOnFailureListener {
+//                    showToast("신고 접수에 실패했습니다", Toast.LENGTH_SHORT)
+//                    dialog.dismiss()
+//                }
             }
         }
 
@@ -217,12 +253,19 @@ class ReCommentActivity : AppCompatActivity() {
         val dimView = View(this)
         dimView.setBackgroundColor(Color.parseColor("#80000000"))
         val parentLayout = findViewById<ViewGroup>(android.R.id.content)
-        parentLayout.addView(dimView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        parentLayout.addView(
+            dimView,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
 
         dialog.setOnDismissListener {
             parentLayout.removeView(dimView)
         }
     }
+
     fun loadComments() {
         val receivedCommentData = intent.getParcelableExtra<CommentData>("commentData")
 
@@ -237,7 +280,8 @@ class ReCommentActivity : AppCompatActivity() {
                 }
 
                 if (snapshot != null && snapshot.documents.isNotEmpty()) {
-                    val commentList = snapshot.documents.mapNotNull { it.toObject(CommentData::class.java) }
+                    val commentList =
+                        snapshot.documents.mapNotNull { it.toObject(CommentData::class.java) }
                     adapter.submitList(commentList)
                 } else {
 
@@ -290,7 +334,11 @@ class ReCommentActivity : AppCompatActivity() {
 
                     // reCommentCount가 0보다 클 때만 1 감소
                     if (oldReCommentCount > 0) {
-                        transaction.update(commentDocumentRef, "reCommentCount", oldReCommentCount - 1)
+                        transaction.update(
+                            commentDocumentRef,
+                            "reCommentCount",
+                            oldReCommentCount - 1
+                        )
                     }
 
                     // 대댓글 삭제
@@ -304,7 +352,7 @@ class ReCommentActivity : AppCompatActivity() {
                     dialog.dismiss()
                 }
             }
-        }else {
+        } else {
             val reportTextView = view.findViewById<TextView>(R.id.bottom_sheet_report)
 
             reportTextView.setOnClickListener {
@@ -334,7 +382,11 @@ class ReCommentActivity : AppCompatActivity() {
                     if (newReportCount >= 10) {
 
                         if (oldReCommentCount > 0) {
-                            transaction.update(commentDocumentRef, "reCommentCount", oldReCommentCount - 1)
+                            transaction.update(
+                                commentDocumentRef,
+                                "reCommentCount",
+                                oldReCommentCount - 1
+                            )
                         }
                         transaction.delete(reCommentDocumentRef)
                     }
@@ -354,14 +406,26 @@ class ReCommentActivity : AppCompatActivity() {
         val dimView = View(this)
         dimView.setBackgroundColor(Color.parseColor("#80000000"))
         val parentLayout = findViewById<ViewGroup>(android.R.id.content)
-        parentLayout.addView(dimView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        parentLayout.addView(
+            dimView,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
 
         dialog.setOnDismissListener {
             parentLayout.removeView(dimView)
         }
     }
 
-    private fun likeClick(commentData: CommentData, imageView: ImageView, textView1: TextView, textView2: TextView) {
+
+    private fun likeClick(
+        commentData: CommentData,
+        imageView: ImageView,
+        textView1: TextView,
+        textView2: TextView
+    ) {
         val likeUsers = commentData.likeUsers
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val commentDocumentRef = store.collection("Community")
@@ -386,7 +450,13 @@ class ReCommentActivity : AppCompatActivity() {
             runOnUiThread { showToast("좋아요 실패했습니다", Toast.LENGTH_SHORT) }
         }
     }
-    private fun reCommentLikeClick(reCommentData: ReCommentData, imageView: ImageView, textView1: TextView, textView2: TextView) {
+
+    private fun reCommentLikeClick(
+        reCommentData: ReCommentData,
+        imageView: ImageView,
+        textView1: TextView,
+        textView2: TextView
+    ) {
         Log.d("ReCommentActivity", "reCommentLikeClick called with $reCommentData")
         val likeUsers = reCommentData.likeUsers
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
@@ -430,10 +500,6 @@ class ReCommentActivity : AppCompatActivity() {
                 textView.text = reCommentCount.toString()
             }
     }
-
-
-
-
 
 
 }
