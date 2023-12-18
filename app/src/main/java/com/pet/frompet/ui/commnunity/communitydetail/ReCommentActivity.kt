@@ -39,6 +39,12 @@ class ReCommentActivity : AppCompatActivity() {
         imm?.hideSoftInputFromWindow(currentFocus?.windowToken, 0)
     }
 
+    private fun observeViewModel(textView: TextView) {
+        viewModel.reCommentCount.observe(this, Observer { count ->
+            textView.text = count.toString()
+        })
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityReCommentBinding.inflate(layoutInflater)
@@ -46,6 +52,8 @@ class ReCommentActivity : AppCompatActivity() {
 
         viewModel = ViewModelProvider(this).get(ReCommentViewModel::class.java)
 
+        viewModel.loadReCommentCount(communityDocId = "", communityId = "")
+        observeViewModel(binding.tvCountRe)
 
         communityData = intent.getParcelableExtra<CommunityData>("communityData")
 
@@ -82,7 +90,7 @@ class ReCommentActivity : AppCompatActivity() {
 
         val tvCountRe = findViewById<TextView>(R.id.tv_count_re)
         receivedCommentData?.let {
-            loadReCommentCount(it, tvCountRe)
+//            loadReCommentCount(it, tvCountRe)
         }
 
 
@@ -486,20 +494,22 @@ class ReCommentActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadReCommentCount(commentData: CommentData, textView: TextView) {
-        store.collection("Community")
-            .document(communityData?.docsId ?: "")
-            .collection("Comment")
-            .document(commentData.commentId)
-            .collection("ReComment")
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    return@addSnapshotListener
-                }
-                val reCommentCount = (snapshot?.documents?.size ?: 0) + 1
-                textView.text = reCommentCount.toString()
-            }
-    }
+
+
+//    private fun loadReCommentCount(commentData: CommentData, textView: TextView) {
+//        store.collection("Community")
+//            .document(communityData?.docsId ?: "")
+//            .collection("Comment")
+//            .document(commentData.commentId)
+//            .collection("ReComment")
+//            .addSnapshotListener { snapshot, e ->
+//                if (e != null) {
+//                    return@addSnapshotListener
+//                }
+//                val reCommentCount = (snapshot?.documents?.size ?: 0) + 1
+//                textView.text = reCommentCount.toString()
+//            }
+//    }
 
 
 }

@@ -13,8 +13,13 @@ class ReCommentViewModel : ViewModel() {
 
     private val store = FirebaseFirestore.getInstance()
     private var communityData: CommunityData? = null
+
     private val _addReCommentResult = MutableLiveData<List<ReCommentData>>()
-    val addReCommentResult: LiveData<List<ReCommentData>> = _addReCommentResult
+    val addReCommentResult: LiveData<List<ReCommentData>> get() = _addReCommentResult
+
+    // 대댓글 수 카운트
+    private val _reCommentCount = MutableLiveData<Int>()
+    val reCommentCount: LiveData<Int> get() = _reCommentCount
 
 //    fun addReComment(receiveCommentData: CommentData, reCommentText: String) {
 //
@@ -45,6 +50,7 @@ class ReCommentViewModel : ViewModel() {
 //    }
 
     // 액비티비에서 fb 에 직접 접근하는 대신, viewmodel 에서 ref 생성이 바람직
+    // 댓글 삭제
     fun deleteComment(
         communityDocId: String,
         communityId: String,
@@ -62,6 +68,7 @@ class ReCommentViewModel : ViewModel() {
             .addOnFailureListener { onFailure() }
     }
 
+    // 댓글 신고
     fun reportComment(
         communityDocId: String,
         communityId: String,
@@ -89,5 +96,22 @@ class ReCommentViewModel : ViewModel() {
         }.addOnFailureListener {
             onFailure()
         }
+    }
+
+    // 대댓글 수 로드
+    fun loadReCommentCount(communityDocId: String, communityId: String) {
+        val reCommentRef = store
+            .collection("Community")
+            .document(communityDocId)
+            .collection("Comment")
+            .document(communityId)
+            .collection("ReComment")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    return@addSnapshotListener
+                }
+                val count = snapshot?.documents?.size ?: 0
+                _reCommentCount.value = count
+            }
     }
 }
