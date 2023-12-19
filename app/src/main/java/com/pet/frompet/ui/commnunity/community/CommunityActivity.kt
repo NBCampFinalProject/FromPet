@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.widget.SearchView
+import androidx.lifecycle.ViewModelProvider
 import com.pet.frompet.R
 import com.pet.frompet.data.model.CommunityData
 import com.pet.frompet.databinding.ActivityCommunityBinding
@@ -15,8 +16,17 @@ import com.pet.frompet.ui.commnunity.communityadd.CommunityAddActivity
 import com.pet.frompet.ui.commnunity.communitydetail.CommunityDetailActivity
 import com.pet.frompet.ui.commnunity.communityhome.CategoryClick
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 class CommunityActivity : AppCompatActivity() {
+
+
+
+    private val viewModel by lazy {
+        ViewModelProvider(this, CommunityViewModelFactory(
+            FirebaseFirestore.getInstance())).get(CommunityViewModel::class.java)
+    }
+
 
     companion object {
         const val COMMUNITY_DATA = "communityData"
@@ -27,7 +37,7 @@ class CommunityActivity : AppCompatActivity() {
     private var _binding: ActivityCommunityBinding? = null
     private val binding get() = _binding!!
     private val auth = FirebaseAuth.getInstance()
-    private val viewModel : CommunityViewModel by viewModels()
+//    private val viewModel : CommunityViewModel by viewModels()
     private var originalList = mutableListOf<CommunityData>()
     private val communityAdapter: CommunityAdapter by lazy {
         CommunityAdapter(
@@ -43,7 +53,6 @@ class CommunityActivity : AppCompatActivity() {
             val docsId = result.data?.getStringExtra(CommunityDetailActivity.DOCS_ID)
             docsId?.let { id ->
                 viewModel.deleteCommunityData(id)
-
             }
         }
     }
@@ -140,6 +149,8 @@ class CommunityActivity : AppCompatActivity() {
                     intent.putExtra(COMMUNITY_DATA, item)
                     startActivity(intent)
                 }
+
+                else -> {}
             }
         }
     }

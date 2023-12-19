@@ -1,3 +1,5 @@
+@file:Suppress("UNCHECKED_CAST")
+
 package com.pet.frompet.ui.commnunity.community
 
 
@@ -6,6 +8,8 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.pet.frompet.SingleLiveEvent
 import com.pet.frompet.data.model.CommunityData
 import com.pet.frompet.ui.commnunity.communityhome.CategoryClick
@@ -13,8 +17,13 @@ import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.pet.frompet.data.repository.CommunityRepository
+import com.pet.frompet.data.repository.CommunityRepositoryImpl
+import kotlinx.coroutines.launch
+import java.lang.Exception
 
 class CommunityViewModel(
+    private val communityRepository: CommunityRepository
 ) : ViewModel() {
 
     // 데이터 가져오기
@@ -39,23 +48,13 @@ class CommunityViewModel(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 
 
+    // repo 로
+    // livedata는 이미 비동기적으로 동작하도록 설계돼있음
+    // livedata를 반환하는 함수엔 suspend 사용할 필요 없음
     fun getCommunityData(petType: String): LiveData<List<CommunityData>> {
-        val liveData = MutableLiveData<List<CommunityData>>()
-        firestore.collection("Community")
-            .whereEqualTo("petType", petType)
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .get()
-            .addOnSuccessListener { documents ->
-                Log.d("zzzzzz", "Documents: $documents")
-
-                val communityDataList = documents.mapNotNull { document ->
-                    document.toObject(CommunityData::class.java)
-                }
-                liveData.value = communityDataList
-            }
-            .addOnFailureListener {}
-        return liveData
+        return communityRepository.getCommunityData(petType)
     }
+
 
     fun getFilterCommunityData(petType: String, filter: String): LiveData<List<CommunityData>> {
         val liveData = MutableLiveData<List<CommunityData>>()
@@ -75,13 +74,29 @@ class CommunityViewModel(
             .addOnFailureListener {}
         return liveData
     }
-    fun deleteCommunityData(docsId: String) {
-        firestore.collection("Community").document(docsId).delete()
-            .addOnCompleteListener { task ->
-                _deleteResult.value = task.isSuccessful
-            }
-    }
 
+    fun deleteCommunityData(docsId: String) {
+        viewModelScope.launch {
+            try {
+                val delete = communityRepository.deleteCommunityData(docsId)
+                _deleteResult.value = (delete != null)
+            } catch (e: Exception) {
+                _deleteResult.value = false
+            }
+        }
+    }
+}
+
+class CommunityViewModelFactory(
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(CommunityViewModel::class.java)) {
+            return CommunityViewModel(CommunityRepositoryImpl(firestore)) as T
+        } else {
+            throw IllegalArgumentException("Not found ViewModel")
+        }
+    }
 }
 
 
