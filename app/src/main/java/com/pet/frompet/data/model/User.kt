@@ -14,5 +14,6 @@ data class User(
     val petType: String = "",
     val petNeuter: String = "",
     var uid:String = "",
+    val userEmail:String = "",
     var userLocation: UserLocation? = null
 ): Parcelable

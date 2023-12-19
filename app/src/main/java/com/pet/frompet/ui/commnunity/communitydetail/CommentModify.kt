@@ -13,7 +13,7 @@ import com.pet.frompet.data.model.CommunityData
 import com.google.firebase.firestore.FirebaseFirestore
 
 
-class CommentModify : AppCompatActivity() {
+class CommentModify : AppCompatActivity() { //댓글 수정 화면
     private lateinit var etComment: EditText
     private var commentData: CommentData? = null
     private var communityData: CommunityData? = null

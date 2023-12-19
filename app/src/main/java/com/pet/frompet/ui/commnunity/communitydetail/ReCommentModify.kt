@@ -14,7 +14,7 @@ import com.pet.frompet.data.model.ReCommentData
 import com.pet.frompet.data.model.CommunityData
 import com.google.firebase.firestore.FirebaseFirestore
 
-class ReCommentModify : AppCompatActivity() {
+class ReCommentModify : AppCompatActivity() { //대댓글 수정 화면
     private lateinit var etReComment: EditText
     private var reCommentData: ReCommentData? = null
     private var communityData: CommunityData? = null

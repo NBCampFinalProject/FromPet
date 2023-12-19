@@ -1,4 +1,5 @@
 package com.pet.frompet.ui.commnunity.communitydetail
+
 import android.content.Intent
 import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
@@ -7,11 +8,10 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
-import android.widget.Button
-import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.firebase.auth.FirebaseAuth
@@ -21,14 +21,26 @@ import com.pet.frompet.data.model.CommentData
 import com.pet.frompet.data.model.CommunityData
 import com.pet.frompet.data.model.ReCommentData
 import com.pet.frompet.databinding.ActivityReCommentBinding
+import com.pet.frompet.ui.map.MapViewModel
 import com.pet.frompet.util.showToast
 
-class ReCommentActivity : AppCompatActivity() {
+class ReCommentActivity : AppCompatActivity() { //대댓글 작성 화면
 
-    private lateinit var binding: ActivityReCommentBinding
+    private var _binding: ActivityReCommentBinding? = null
+    private val binding get() = _binding!!
     private lateinit var adapter: CommentAdapter
-    private val store = FirebaseFirestore.getInstance()
+    /*private val firestore = FirebaseFirestore.getInstance()*/
     private var communityData: CommunityData? = null
+
+    private val viewModel by lazy {
+        ViewModelProvider(
+            this,
+            RecommnetViewModelFactory(firestore)
+        ).get(RecommnetViewModel::class.java)
+    }
+    private val firestore: FirebaseFirestore by lazy {
+        FirebaseFirestore.getInstance()
+    }
 
     private fun hideKeyboard() {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager
@@ -37,7 +49,7 @@ class ReCommentActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityReCommentBinding.inflate(layoutInflater)
+        _binding = ActivityReCommentBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
 
@@ -84,7 +96,7 @@ class ReCommentActivity : AppCompatActivity() {
             val reCommentText = binding.editTextText.text.toString()
             receivedCommentData?.let {
                 if (reCommentText.isNotEmpty()) {
-                    addReComment(it, reCommentText)
+                    /*addReComment(it, reCommentText)*/
                 } else {
                     showToast("대댓글 내용을 입력하세요", Toast.LENGTH_SHORT)
                 }
@@ -96,54 +108,54 @@ class ReCommentActivity : AppCompatActivity() {
         loadComments()
     }
 
-    private fun addReComment(receivedCommentData: CommentData, reCommentText: String) {
-        val reCommentId = store.collection("Community")
-            .document(receivedCommentData.postDocumentId)
-            .collection("Comment")
-            .document(receivedCommentData.commentId)
-            .collection("ReComment")
-            .document().id
+    /* private fun addReComment(receivedCommentData: CommentData, reCommentText: String) {
+         val reCommentId = store.collection("Community")
+             .document(receivedCommentData.postDocumentId)
+             .collection("Comment")
+             .document(receivedCommentData.commentId)
+             .collection("ReComment")
+             .document().id
 
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
+         val uid = FirebaseAuth.getInstance().currentUser?.uid
 
-        if (uid != null) {
-            val reCommentData = ReCommentData(
-                reCommentId,
-                receivedCommentData.commentId,
-                reCommentText,
-                uid,
-                System.currentTimeMillis()
-            )
+         if (uid != null) {
+             val reCommentData = ReCommentData(
+                 reCommentId,
+                 receivedCommentData.commentId,
+                 reCommentText,
+                 uid,
+                 System.currentTimeMillis()
+             )
 
-            store.collection("Community")
-                .document(receivedCommentData.postDocumentId)
-                .collection("Comment")
-                .document(receivedCommentData.commentId)
-                .collection("ReComment")
-                .document(reCommentId)
-                .set(reCommentData)
-                .addOnSuccessListener {
-                    val commentDocumentRef = store.collection("Community")
-                        .document(receivedCommentData.postDocumentId)
-                        .collection("Comment")
-                        .document(receivedCommentData.commentId)
-                    store.runTransaction { transaction ->
-                        val snapshot = transaction.get(commentDocumentRef)
-                        val newReCommentCount = (snapshot.getLong("reCommentCount") ?: 0) + 1
-                        transaction.update(commentDocumentRef, "reCommentCount", newReCommentCount)
-                        null
-                    }
-                    hideKeyboard()
-                    binding.editTextText.text.clear()
-                    adapter.reloadReComments(receivedCommentData)
-                }
-                .addOnFailureListener {
-                    showToast("대댓글 추가에 실패했습니다", Toast.LENGTH_SHORT)
-                }
-        } else {
-            showToast("사용자 정보를 불러오는데 실패했습니다.", Toast.LENGTH_SHORT)
-        }
-    }
+             store.collection("Community")
+                 .document(receivedCommentData.postDocumentId)
+                 .collection("Comment")
+                 .document(receivedCommentData.commentId)
+                 .collection("ReComment")
+                 .document(reCommentId)
+                 .set(reCommentData)
+                 .addOnSuccessListener {
+                     val commentDocumentRef = store.collection("Community")
+                         .document(receivedCommentData.postDocumentId)
+                         .collection("Comment")
+                         .document(receivedCommentData.commentId)
+                     store.runTransaction { transaction ->
+                         val snapshot = transaction.get(commentDocumentRef)
+                         val newReCommentCount = (snapshot.getLong("reCommentCount") ?: 0) + 1
+                         transaction.update(commentDocumentRef, "reCommentCount", newReCommentCount)
+                         null
+                     }
+                     hideKeyboard()
+                     binding.editTextText.text.clear()
+                     adapter.reloadReComments(receivedCommentData)
+                 }
+                 .addOnFailureListener {
+                     showToast("대댓글 추가에 실패했습니다", Toast.LENGTH_SHORT)
+                 }
+         } else {
+             showToast("사용자 정보를 불러오는데 실패했습니다.", Toast.LENGTH_SHORT)
+         }
+     }*/
     private fun showBottomSheet(commentData: CommentData) {
         val layoutId = if (commentData.authorUid == FirebaseAuth.getInstance().currentUser?.uid) {
             R.layout.bottom_sheet_layout
@@ -169,7 +181,7 @@ class ReCommentActivity : AppCompatActivity() {
             }
 
             deleteTextView.setOnClickListener {
-                val commentDocumentRef = store.collection("Community")
+                val commentDocumentRef = firestore.collection("Community")
                     .document(communityData?.docsId ?: "")
                     .collection("Comment")
                     .document(commentData.commentId)
@@ -188,11 +200,11 @@ class ReCommentActivity : AppCompatActivity() {
             val reportTextView = view.findViewById<TextView>(R.id.bottom_sheet_report)
 
             reportTextView.setOnClickListener {
-                val commentDocumentRef = store.collection("Community")
+                val commentDocumentRef = firestore.collection("Community")
                     .document(communityData?.docsId ?: "")
                     .collection("Comment")
                     .document(commentData.commentId)
-                store.runTransaction { transaction ->
+                firestore.runTransaction { transaction ->
                     val snapshot = transaction.get(commentDocumentRef)
                     val newReportCount = snapshot.getLong("reportCount")?.plus(1) ?: 1
                     transaction.update(commentDocumentRef, "reportCount", newReportCount)
@@ -217,16 +229,23 @@ class ReCommentActivity : AppCompatActivity() {
         val dimView = View(this)
         dimView.setBackgroundColor(Color.parseColor("#80000000"))
         val parentLayout = findViewById<ViewGroup>(android.R.id.content)
-        parentLayout.addView(dimView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        parentLayout.addView(
+            dimView,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
 
         dialog.setOnDismissListener {
             parentLayout.removeView(dimView)
         }
     }
+
     fun loadComments() {
         val receivedCommentData = intent.getParcelableExtra<CommentData>("commentData")
 
-        store.collection("Community")
+        firestore.collection("Community")
             .document(communityData?.docsId ?: "")
             .collection("Comment")
             .whereEqualTo("commentId", receivedCommentData?.commentId)
@@ -237,7 +256,8 @@ class ReCommentActivity : AppCompatActivity() {
                 }
 
                 if (snapshot != null && snapshot.documents.isNotEmpty()) {
-                    val commentList = snapshot.documents.mapNotNull { it.toObject(CommentData::class.java) }
+                    val commentList =
+                        snapshot.documents.mapNotNull { it.toObject(CommentData::class.java) }
                     adapter.submitList(commentList)
                 } else {
 
@@ -270,7 +290,7 @@ class ReCommentActivity : AppCompatActivity() {
             }
 
             deleteTextView.setOnClickListener {
-                val reCommentDocumentRef = store.collection("Community")
+                val reCommentDocumentRef = firestore.collection("Community")
                     .document(communityData?.docsId ?: "")
                     .collection("Comment")
                     .document(reCommentData.commentId)
@@ -278,19 +298,23 @@ class ReCommentActivity : AppCompatActivity() {
                     .document(reCommentData.reCommentId)
 
                 // 댓글의 문서 참조
-                val commentDocumentRef = store.collection("Community")
+                val commentDocumentRef = firestore.collection("Community")
                     .document(communityData?.docsId ?: "")
                     .collection("Comment")
                     .document(reCommentData.commentId)
 
-                store.runTransaction { transaction ->
+                firestore.runTransaction { transaction ->
                     // 댓글의 현재 reCommentCount를 가져옴
                     val commentSnapshot = transaction.get(commentDocumentRef)
                     val oldReCommentCount = commentSnapshot.getLong("reCommentCount") ?: 0
 
                     // reCommentCount가 0보다 클 때만 1 감소
                     if (oldReCommentCount > 0) {
-                        transaction.update(commentDocumentRef, "reCommentCount", oldReCommentCount - 1)
+                        transaction.update(
+                            commentDocumentRef,
+                            "reCommentCount",
+                            oldReCommentCount - 1
+                        )
                     }
 
                     // 대댓글 삭제
@@ -304,11 +328,11 @@ class ReCommentActivity : AppCompatActivity() {
                     dialog.dismiss()
                 }
             }
-        }else {
+        } else {
             val reportTextView = view.findViewById<TextView>(R.id.bottom_sheet_report)
 
             reportTextView.setOnClickListener {
-                val reCommentDocumentRef = store.collection("Community")
+                val reCommentDocumentRef = firestore.collection("Community")
                     .document(communityData?.docsId ?: "")
                     .collection("Comment")
                     .document(reCommentData.commentId)
@@ -316,12 +340,12 @@ class ReCommentActivity : AppCompatActivity() {
                     .document(reCommentData.reCommentId)
 
 
-                val commentDocumentRef = store.collection("Community")
+                val commentDocumentRef = firestore.collection("Community")
                     .document(communityData?.docsId ?: "")
                     .collection("Comment")
                     .document(reCommentData.commentId)
 
-                store.runTransaction { transaction ->
+                firestore.runTransaction { transaction ->
 
                     val commentSnapshot = transaction.get(commentDocumentRef)
                     val oldReCommentCount = commentSnapshot.getLong("reCommentCount") ?: 0
@@ -334,7 +358,11 @@ class ReCommentActivity : AppCompatActivity() {
                     if (newReportCount >= 10) {
 
                         if (oldReCommentCount > 0) {
-                            transaction.update(commentDocumentRef, "reCommentCount", oldReCommentCount - 1)
+                            transaction.update(
+                                commentDocumentRef,
+                                "reCommentCount",
+                                oldReCommentCount - 1
+                            )
                         }
                         transaction.delete(reCommentDocumentRef)
                     }
@@ -354,21 +382,32 @@ class ReCommentActivity : AppCompatActivity() {
         val dimView = View(this)
         dimView.setBackgroundColor(Color.parseColor("#80000000"))
         val parentLayout = findViewById<ViewGroup>(android.R.id.content)
-        parentLayout.addView(dimView, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        parentLayout.addView(
+            dimView,
+            ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        )
 
         dialog.setOnDismissListener {
             parentLayout.removeView(dimView)
         }
     }
 
-    private fun likeClick(commentData: CommentData, imageView: ImageView, textView1: TextView, textView2: TextView) {
+    private fun likeClick(
+        commentData: CommentData,
+        imageView: ImageView,
+        textView1: TextView,
+        textView2: TextView
+    ) {
         val likeUsers = commentData.likeUsers
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val commentDocumentRef = store.collection("Community")
+        val commentDocumentRef = firestore.collection("Community")
             .document(communityData?.docsId ?: "")
             .collection("Comment")
             .document(commentData.commentId)
-        store.runTransaction { transaction ->
+        firestore.runTransaction { transaction ->
             val snapshot = transaction.get(commentDocumentRef)
             val newLikeCount: Long
             val newLikeUsers: List<String>
@@ -386,17 +425,23 @@ class ReCommentActivity : AppCompatActivity() {
             runOnUiThread { showToast("좋아요 실패했습니다", Toast.LENGTH_SHORT) }
         }
     }
-    private fun reCommentLikeClick(reCommentData: ReCommentData, imageView: ImageView, textView1: TextView, textView2: TextView) {
+
+    private fun reCommentLikeClick(
+        reCommentData: ReCommentData,
+        imageView: ImageView,
+        textView1: TextView,
+        textView2: TextView
+    ) {
         Log.d("ReCommentActivity", "reCommentLikeClick called with $reCommentData")
         val likeUsers = reCommentData.likeUsers
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        val reCommentDocumentRef = store.collection("Community")
+        val reCommentDocumentRef = firestore.collection("Community")
             .document(communityData?.docsId ?: "")
             .collection("Comment")
             .document(reCommentData.commentId)
             .collection("ReComment")
             .document(reCommentData.reCommentId)
-        store.runTransaction { transaction ->
+        firestore.runTransaction { transaction ->
             Log.d("ReCommentActivity", "Running transaction...")
             val snapshot = transaction.get(reCommentDocumentRef)
             val newLikeCount: Long
@@ -417,7 +462,7 @@ class ReCommentActivity : AppCompatActivity() {
     }
 
     private fun loadReCommentCount(commentData: CommentData, textView: TextView) {
-        store.collection("Community")
+        firestore.collection("Community")
             .document(communityData?.docsId ?: "")
             .collection("Comment")
             .document(commentData.commentId)
@@ -430,10 +475,6 @@ class ReCommentActivity : AppCompatActivity() {
                 textView.text = reCommentCount.toString()
             }
     }
-
-
-
-
 
 
 }

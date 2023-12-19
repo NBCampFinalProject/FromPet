@@ -47,7 +47,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-class CommunityDetailActivity : AppCompatActivity() {
+class CommunityDetailActivity : AppCompatActivity() { //댓글 작성할수 있는 화면
 
     private var _binding: ActivityCommunityDetailBinding? = null
     private val binding get() = _binding!!
