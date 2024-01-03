@@ -14,6 +14,7 @@ import com.pet.frompet.databinding.ActivityMainBinding
 import com.pet.frompet.ui.login.LoginActivity
 import com.google.firebase.auth.FirebaseAuth
 import android.Manifest
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatDelegate
@@ -141,8 +142,22 @@ class MainActivity : AppCompatActivity() {
         val allPermissionsGranted = locationPermissions.all {
             ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
         }
-        if (!allPermissionsGranted) {
+        if (allPermissionsGranted) {
+         loadUserBasedOnCurrentLocation()
+        }else{
             requestLocationPermissionLauncher.launch(locationPermissions)
+        }
+    }
+
+    private fun loadUserBasedOnCurrentLocation() {
+        val fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+        fusedLocationProviderClient.lastLocation.addOnSuccessListener { location->
+            if (location != null){
+                Log.d("filter", "Current location: ${location.latitude}, ${location.longitude}")
+                homeFilterViewModel.applyDefaultFilterLoadUsers(location)
+            }else{
+                //location is null ?
+            }
         }
     }
 
