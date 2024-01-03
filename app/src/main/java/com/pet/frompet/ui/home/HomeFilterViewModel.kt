@@ -1,6 +1,7 @@
 package com.pet.frompet.ui.home
 
 import android.app.Application
+import android.location.Location
 import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.LiveData
@@ -78,7 +79,18 @@ class HomeFilterViewModel(
             _filteredUsers.postValue(updateUsers)
         }
     }
-
+    fun applyDefaultFilterLoadUsers(currentUserLocation: Location){
+        val dafaultLocation = Filter(distanceFrom = 10.0f)
+        viewModelScope.launch {
+            val usersWithinDistance  = homeFilterRepository.applyDistanceFilter(
+                homeFilterRepository.loadFilteredUsers(currentUser),
+                dafaultLocation,
+                currentUserLocation
+            )
+            Log.d("filter", "Filtered users count: ${usersWithinDistance.size}")
+            _filteredUsers.value = usersWithinDistance
+        }
+    }
 }
 
 class HomeFilterViewModelFactory(
