@@ -17,30 +17,43 @@ class MapRepositoryImpl(
     private val firebaseDatabase: FirebaseDatabase,
     private val firestore: FirebaseFirestore
 ) : MapRepository {
+
+    companion object {
+        private const val TAG = "MapRepository"
+    }
     private val locationRef = firebaseDatabase.getReference("location")
     override suspend fun getCurrentUserId(): String {
-        return FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        Log.d("LoadLocationData", "1getCurrentUserId : 시작")
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        Log.d("LoadLocationData", "1getCurrentUserId : 끝 $uid")
+        return uid
     }
 
     override suspend fun getUserLocation(): UserLocation {
+        Log.d("LoadLocationData", "2getUserLocation : 시작" )
         val currentUserId = getCurrentUserId()
-        return firebaseDatabase.getReference("location")
+        val getuser = firebaseDatabase.getReference("location")
             .child(currentUserId)
             .get()
             .await()
             .getValue(UserLocation::class.java)
             ?: UserLocation()
+        Log.d("LoadLocationData", "2getUserLocation : 끝 $getuser" )
+        return getuser
     }
 
     override suspend fun updateUserLocation(userLocation: UserLocation) {
+        Log.d("LoadLocationData", "3 위치 업데이트 : 시작" )
         val currentUserId = getCurrentUserId()
         firebaseDatabase.getReference("location")
             .child(currentUserId)
             .setValue(userLocation)
             .await()
+        Log.d("LoadLocationData", "3 위치 업데이트 : 끝 $currentUserId" )
     }
 
     override suspend fun getOtherUserLocation(): List<UserLocation> {
+        Log.d("LoadLocationData", "4 타사용자_위치조회 : 시작" )
         val currentUserId = getCurrentUserId()
         val snapshot = firebaseDatabase.getReference("location")
             .get()
@@ -55,10 +68,12 @@ class MapRepositoryImpl(
                 otherUserLocations.add(location)
             }
         }
+        Log.d("LoadLocationData", "4 타사용자_위치조회 : 끝 $otherUserLocations" )
         return otherUserLocations
     }
 
     override suspend fun getloadLocationData(bounds: LatLngBounds): UserLocationInfo {
+        Log.d("LoadLocationData", "5 특정 영역 내 사용자들 위치 정보 가져옴 : 시작" )
         return suspendCoroutine { continuation ->
             val userUids = mutableListOf<String>()
             val locationList = mutableListOf<UserLocation>()
@@ -87,6 +102,7 @@ class MapRepositoryImpl(
 
                 val userLocationInfo = UserLocationInfo(userUids, locationList)
                 continuation.resume(userLocationInfo)
+                Log.d("LoadLocationData", "5 특정 영역 내 사용자들 위치 정보 가져옴 : 끝 $userLocationInfo" )
             }
         }
     }
